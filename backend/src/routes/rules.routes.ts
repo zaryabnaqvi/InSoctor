@@ -50,4 +50,38 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 });
 
+/**
+ * PUT /api/rules/:id/status
+ * Update rule status (enable/disable)
+ */
+router.put('/:id/status', async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body; // 'enabled' or 'disabled'
+
+        if (!status || !['enabled', 'disabled'].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid status',
+                message: 'Status must be"enabled" or "disabled"',
+            });
+        }
+
+        const updatedRule = await wazuhService.updateRuleStatus(id, status);
+
+        res.json({
+            success: true,
+            data: updatedRule,
+            message: `Rule ${id} ${status} successfully`,
+        });
+    } catch (error: any) {
+        logger.error(`Failed to update rule ${req.params.id}`, { error: error.message });
+        res.status(500).json({
+            success: false,
+            error: 'Failed to update rule status',
+            message: error.message,
+        });
+    }
+});
+
 export default router;

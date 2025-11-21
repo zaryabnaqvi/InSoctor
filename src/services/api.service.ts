@@ -194,6 +194,11 @@ class ApiClient {
         const response = await this.client.get(`/rules/${id}`);
         return response.data;
     }
+
+    async updateRuleStatus(id: string, status: 'enabled' | 'disabled') {
+        const response = await this.client.put(`/rules/${id}/status`, { status });
+        return response.data;
+    }
 }
 
 export const apiClient = new ApiClient();

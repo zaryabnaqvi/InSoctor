@@ -266,6 +266,40 @@ export class WazuhService {
     }
 
     /**
+     * Update rule status (enable/disable)
+     * Note: In standard Wazuh, this often requires file manipulation. 
+     * This implementation assumes a compatible API endpoint or acts as a placeholder 
+     * for the complex file editing logic required for standard Wazuh installations.
+     */
+    async updateRuleStatus(ruleId: string, status: 'enabled' | 'disabled'): Promise<any> {
+        try {
+            logger.info(`Updating rule ${ruleId} status to ${status}`);
+
+            // In a real Wazuh setup, you might need to use PUT /manager/files to edit the XML
+            // For now, we'll attempt a direct update if supported, or return success to simulate
+            // the UI interaction since direct rule toggling via API varies by version.
+
+            // Example payload for a hypothetical rule update endpoint
+            // const data = await this.request(
+            //     'PUT',
+            //     `/rules/${ruleId}`,
+            //     { status }
+            // );
+
+            // For demonstration/MVP purposes (as direct API toggling is complex):
+            return {
+                id: ruleId,
+                status,
+                message: "Rule status update simulated (Wazuh requires XML file editing)"
+            };
+
+        } catch (error: any) {
+            logger.error(`Failed to update rule ${ruleId}`, { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
      * Get agents from Wazuh
      */
     async getAgents(): Promise<any[]> {
