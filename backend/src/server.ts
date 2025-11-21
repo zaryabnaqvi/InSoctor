@@ -10,6 +10,7 @@ import alertsRoutes from './routes/alerts.routes';
 import logsRoutes from './routes/logs.routes';
 import casesRoutes from './routes/cases.routes';
 import rulesRoutes from './routes/rules.routes';
+import agentsRoutes from './routes/agents.routes';
 
 const app: Application = express();
 
@@ -59,6 +60,7 @@ app.use('/api/alerts', alertsRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/cases', casesRoutes);
 app.use('/api/rules', rulesRoutes);
+app.use('/api/agents', agentsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

@@ -199,6 +199,27 @@ class ApiClient {
         const response = await this.client.put(`/rules/${id}/status`, { status });
         return response.data;
     }
+
+    // Agents
+    async getAgents() {
+        const response = await this.client.get('/agents');
+        return response.data;
+    }
+
+    async getAgent(id: string) {
+        const response = await this.client.get(`/agents/${id}`);
+        return response.data;
+    }
+
+    async restartAgent(id: string) {
+        const response = await this.client.post(`/agents/${id}/restart`);
+        return response.data;
+    }
+
+    async deleteAgent(id: string) {
+        const response = await this.client.delete(`/agents/${id}`);
+        return response.data;
+    }
 }
 
 export const apiClient = new ApiClient();

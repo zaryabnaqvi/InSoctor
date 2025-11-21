@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { 
-  ComputerIcon, 
-  LaptopIcon, 
-  SmartphoneIcon, 
-  ServerIcon, 
+import { useState, useEffect } from 'react';
+import {
+  ComputerIcon,
+  LaptopIcon,
+  SmartphoneIcon,
+  ServerIcon,
   TabletIcon,
   ShieldCheckIcon,
   ShieldAlertIcon,
@@ -20,13 +20,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import {
   DropdownMenu,
@@ -43,7 +43,9 @@ import {
 } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { toast } from '@/hooks/use-toast';
+import apiClient from '@/services/api.service';
+import { formatDistanceToNow } from 'date-fns';
 
 // Device type icons mapping
 const deviceIcons = {
@@ -52,150 +54,120 @@ const deviceIcons = {
   mobile: <SmartphoneIcon className="h-4 w-4" />,
   server: <ServerIcon className="h-4 w-4" />,
   tablet: <TabletIcon className="h-4 w-4" />,
+  unknown: <ComputerIcon className="h-4 w-4" />
 };
 
 // Status components with appropriate colors
-const StatusBadge = ({ status }: { status: 'online' | 'offline' | 'at-risk' }) => {
-  const statusClasses = {
-    'online': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-    'offline': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-    'at-risk': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-  };
-  
+const StatusBadge = ({ status }: { status: string }) => {
+  const normalizedStatus = status.toLowerCase();
+  let statusClass = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+  let dotClass = 'bg-gray-500';
+
+  if (normalizedStatus === 'active' || normalizedStatus === 'online') {
+    statusClass = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+    dotClass = 'bg-green-500';
+  } else if (normalizedStatus === 'disconnected' || normalizedStatus === 'offline') {
+    statusClass = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+    dotClass = 'bg-red-500';
+  } else if (normalizedStatus === 'pending') {
+    statusClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+    dotClass = 'bg-yellow-500';
+  }
+
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClasses[status]}`}>
-      {status === 'online' && (
-        <span className="w-1.5 h-1.5 mr-1.5 rounded-full bg-green-500"></span>
-      )}
-      {status === 'offline' && (
-        <span className="w-1.5 h-1.5 mr-1.5 rounded-full bg-gray-500"></span>
-      )}
-      {status === 'at-risk' && (
-        <span className="w-1.5 h-1.5 mr-1.5 rounded-full bg-red-500"></span>
-      )}
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}`}>
+      <span className={`w-1.5 h-1.5 mr-1.5 rounded-full ${dotClass}`}></span>
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
 };
 
-// Protection status components
-const ProtectionStatus = ({ status }: { status: 'protected' | 'at-risk' | 'unknown' }) => {
-  return (
-    <div className="flex items-center">
-      {status === 'protected' && <ShieldCheckIcon className="h-4 w-4 text-green-500 mr-1.5" />}
-      {status === 'at-risk' && <ShieldAlertIcon className="h-4 w-4 text-red-500 mr-1.5" />}
-      {status === 'unknown' && <ShieldAlertIcon className="h-4 w-4 text-gray-400 mr-1.5" />}
-      {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
-    </div>
-  );
-};
-
-// Sample data for the endpoints
-const endpoints = [
-  { 
-    id: "EP-001", 
-    name: "DESKTOP-XY12345", 
-    type: "desktop", 
-    ip: "192.168.1.101", 
-    os: "Windows 11 Pro", 
-    lastSeen: "Just now", 
-    status: "online", 
-    protection: "protected",
-    compliance: 100,
-    group: "Executive",
-    user: "John.Smith"
-  },
-  { 
-    id: "EP-002", 
-    name: "LAPTOP-AB67890", 
-    type: "laptop", 
-    ip: "192.168.1.102", 
-    os: "macOS 12.6", 
-    lastSeen: "5 minutes ago", 
-    status: "online", 
-    protection: "protected",
-    compliance: 100,
-    group: "IT",
-    user: "Admin.User"
-  },
-  { 
-    id: "EP-003", 
-    name: "LAPTOP-CD24680", 
-    type: "laptop", 
-    ip: "192.168.1.103", 
-    os: "Windows 11 Pro", 
-    lastSeen: "10 minutes ago", 
-    status: "at-risk", 
-    protection: "at-risk",
-    compliance: 85,
-    group: "Marketing",
-    user: "Jane.Doe"
-  },
-  { 
-    id: "EP-004", 
-    name: "SRV-WEB-PROD-01", 
-    type: "server", 
-    ip: "192.168.10.50", 
-    os: "Ubuntu 22.04 LTS", 
-    lastSeen: "Just now", 
-    status: "online", 
-    protection: "protected",
-    compliance: 98,
-    group: "Servers",
-    user: "system"
-  },
-  { 
-    id: "EP-005", 
-    name: "iPhone-Tim", 
-    type: "mobile", 
-    ip: "192.168.1.105", 
-    os: "iOS 16.5", 
-    lastSeen: "30 minutes ago", 
-    status: "online", 
-    protection: "protected",
-    compliance: 95,
-    group: "Mobile",
-    user: "Tim.Cook"
-  },
-  { 
-    id: "EP-006", 
-    name: "DESKTOP-WS12346", 
-    type: "desktop", 
-    ip: "192.168.1.106", 
-    os: "Windows 10 Enterprise", 
-    lastSeen: "2 hours ago", 
-    status: "offline", 
-    protection: "unknown",
-    compliance: 90,
-    group: "Finance",
-    user: "Sarah.Johnson"
-  },
-  { 
-    id: "EP-007", 
-    name: "iPadPro-Alex", 
-    type: "tablet", 
-    ip: "192.168.1.107", 
-    os: "iPadOS 16.4", 
-    lastSeen: "1 hour ago", 
-    status: "offline", 
-    protection: "protected",
-    compliance: 100,
-    group: "Executive",
-    user: "Alex.Williams"
-  },
-];
-
 export default function EndpointInventory() {
+  const [endpoints, setEndpoints] = useState<any[]>([]);
+  const [filteredEndpoints, setFilteredEndpoints] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Handler for refreshing data
-  const handleRefresh = () => {
+  const fetchEndpoints = async () => {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const response = await apiClient.getAgents();
+      if (response.success && response.data) {
+        setEndpoints(response.data);
+        setFilteredEndpoints(response.data);
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch endpoints:', error);
+      toast({
+        title: 'Failed to fetch endpoints',
+        description: error.message || 'Could not load agents from server',
+        variant: 'destructive',
+      });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
+  };
+
+  useEffect(() => {
+    fetchEndpoints();
+  }, []);
+
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredEndpoints(endpoints);
+    } else {
+      const lowerSearch = searchTerm.toLowerCase();
+      const filtered = endpoints.filter(agent =>
+        agent.name.toLowerCase().includes(lowerSearch) ||
+        agent.id.toLowerCase().includes(lowerSearch) ||
+        (agent.ip && agent.ip.toLowerCase().includes(lowerSearch)) ||
+        (agent.os?.name && agent.os.name.toLowerCase().includes(lowerSearch))
+      );
+      setFilteredEndpoints(filtered);
+    }
+  }, [searchTerm, endpoints]);
+
+  const handleRestart = async (agentId: string) => {
+    try {
+      await apiClient.restartAgent(agentId);
+      toast({
+        title: 'Restart command sent',
+        description: `Agent ${agentId} is restarting...`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Restart failed',
+        description: error.message || 'Could not restart agent',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDelete = async (agentId: string) => {
+    if (!confirm(`Are you sure you want to delete agent ${agentId}?`)) return;
+
+    try {
+      await apiClient.deleteAgent(agentId);
+      toast({
+        title: 'Agent deleted',
+        description: `Agent ${agentId} has been removed`,
+      });
+      fetchEndpoints(); // Refresh list
+    } catch (error: any) {
+      toast({
+        title: 'Delete failed',
+        description: error.message || 'Could not delete agent',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getDeviceType = (osName: string = '') => {
+    const lowerOs = osName.toLowerCase();
+    if (lowerOs.includes('server') || lowerOs.includes('linux')) return 'server';
+    if (lowerOs.includes('mac') || lowerOs.includes('windows')) return 'desktop'; // Could be laptop, hard to tell
+    if (lowerOs.includes('ios') || lowerOs.includes('android')) return 'mobile';
+    return 'unknown';
   };
 
   return (
@@ -212,12 +184,12 @@ export default function EndpointInventory() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
+
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={handleRefresh}>
+                  <Button variant="outline" size="icon" onClick={fetchEndpoints}>
                     {isLoading ? (
                       <RefreshCwIcon className="h-4 w-4 animate-spin" />
                     ) : (
@@ -230,7 +202,7 @@ export default function EndpointInventory() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1">
@@ -240,25 +212,18 @@ export default function EndpointInventory() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[200px]">
                 <DropdownMenuItem>All Endpoints</DropdownMenuItem>
-                <DropdownMenuItem>Online Only</DropdownMenuItem>
-                <DropdownMenuItem>Offline Only</DropdownMenuItem>
-                <DropdownMenuItem>At Risk</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Windows</DropdownMenuItem>
-                <DropdownMenuItem>macOS</DropdownMenuItem>
-                <DropdownMenuItem>Linux</DropdownMenuItem>
-                <DropdownMenuItem>iOS / iPadOS</DropdownMenuItem>
-                <DropdownMenuItem>Android</DropdownMenuItem>
+                <DropdownMenuItem>Active Only</DropdownMenuItem>
+                <DropdownMenuItem>Disconnected Only</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             <Button className="gap-1">
               <span>Add Endpoint</span>
             </Button>
           </div>
         </div>
       </div>
-      
+
       <div className="rounded-md border-0">
         <Table>
           <TableHeader>
@@ -269,49 +234,42 @@ export default function EndpointInventory() {
                   <ArrowUpDownIcon className="h-3.5 w-3.5 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" />
                 </div>
               </TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead>ID</TableHead>
               <TableHead>IP Address</TableHead>
               <TableHead>OS</TableHead>
-              <TableHead>Last Seen</TableHead>
+              <TableHead>Last Keep Alive</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Protection</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              // Loading skeletons
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={`skeleton-${i}`}>
-                  {Array.from({ length: 8 }).map((_, j) => (
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <TableCell key={`cell-${i}-${j}`}>
                       <Skeleton className="h-6 w-full" />
                     </TableCell>
                   ))}
                 </TableRow>
               ))
-            ) : (
-              endpoints.map((endpoint) => (
-                <TableRow key={endpoint.id}>
+            ) : filteredEndpoints.length > 0 ? (
+              filteredEndpoints.map((agent) => (
+                <TableRow key={agent.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
-                      {deviceIcons[endpoint.type as keyof typeof deviceIcons]}
-                      <span className="truncate max-w-[140px]">{endpoint.name}</span>
+                      {deviceIcons[getDeviceType(agent.os?.name) as keyof typeof deviceIcons]}
+                      <span className="truncate max-w-[140px]" title={agent.name}>{agent.name}</span>
                     </div>
                   </TableCell>
+                  <TableCell className="font-mono text-xs">{agent.id}</TableCell>
+                  <TableCell>{agent.ip}</TableCell>
+                  <TableCell>{agent.os?.name || 'Unknown'} {agent.os?.version || ''}</TableCell>
                   <TableCell>
-                    {endpoint.type.charAt(0).toUpperCase() + endpoint.type.slice(1)}
-                  </TableCell>
-                  <TableCell>{endpoint.ip}</TableCell>
-                  <TableCell>{endpoint.os}</TableCell>
-                  <TableCell>{endpoint.lastSeen}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={endpoint.status as 'online' | 'offline' | 'at-risk'} />
+                    {agent.lastKeepAlive ? formatDistanceToNow(new Date(agent.lastKeepAlive), { addSuffix: true }) : 'Never'}
                   </TableCell>
                   <TableCell>
-                    <ProtectionStatus 
-                      status={endpoint.protection as 'protected' | 'at-risk' | 'unknown'} 
-                    />
+                    <StatusBadge status={agent.status} />
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -327,7 +285,7 @@ export default function EndpointInventory() {
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      
+
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -335,16 +293,12 @@ export default function EndpointInventory() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleRestart(agent.id)}>
                             <PowerIcon className="h-4 w-4 mr-2" />
                             <span>Restart</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <LockIcon className="h-4 w-4 mr-2" />
-                            <span>Isolate</span>
-                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(agent.id)}>
                             <TrashIcon className="h-4 w-4 mr-2" />
                             <span>Remove</span>
                           </DropdownMenuItem>
@@ -354,6 +308,12 @@ export default function EndpointInventory() {
                   </TableCell>
                 </TableRow>
               ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  <p className="text-muted-foreground">No endpoints found</p>
+                </TableCell>
+              </TableRow>
             )}
           </TableBody>
         </Table>
