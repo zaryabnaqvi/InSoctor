@@ -1,27 +1,17 @@
-import  { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
-  Filter,
-  PlusCircle,
-  BarChart4,
-  ChevronDown,
   RefreshCw,
-  Clock,
+  ChevronDown,
+  ChevronRight,
+  X,
   Calendar,
-  MoreVertical,
-  ArrowLeft,
-  ArrowRight,
+  Filter,
 } from "lucide-react";
-import { 
-  Tabs, 
-  TabsList, 
-  TabsTrigger, 
-  TabsContent 
-} from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -36,169 +26,167 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Badge,
-} from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
+import apiClient from "@/services/api.service";
+import { formatDistanceToNow } from "date-fns";
 
-// Sample wazuh log data
-const logData = [
-  {
-    time: "May 9, 2024 @ 10:44:30.633",
-    source: "wazuh-archives-4-x-2024.05.09",
-    clusternode: "node01",
-    clustername: "wazuh",
-    agentIp: "10.0.2.15",
-    agentName: "Ubuntu22.04",
-    agentId: "001",
-    agentLabelsGroup: "Team_A",
-    managername: "wazuh-server",
-    decodername: "ossec",
-    fullLog: "df -P: overlay 31811408 5892340 24277596 20% /var/lib/docker/overlay2/63dc5d794e794a0a59f8b1ed85976957e1ff8b1478f334916608462d97972e/merged",
-    inputType: "log",
-    timestamp: "May 9, 2024 @ 10:44:30.631",
-    location: "df -P",
-    id: "1715262270.2434987"
-  },
-  {
-    time: "May 9, 2024 @ 10:44:30.631",
-    source: "wazuh-archives-4-x-2024.05.09",
-    clusternode: "node01",
-    clustername: "wazuh",
-    agentIp: "10.0.2.15",
-    agentName: "Ubuntu22.04",
-    agentId: "001",
-    agentLabelsGroup: "Team_A",
-    managername: "wazuh-server",
-    decodername: "ossec",
-    fullLog: "df -P: overlay 31811408 5892340 24277596 20% /var/lib/docker/overlay2/63dc5d794e794a0a59f8b1ed85976957e1ff8b1478f334916608462d97972e/merged",
-    inputType: "log",
-    timestamp: "May 9, 2024 @ 10:44:30.631",
-    location: "df -P",
-    id: "1715262270.2434987"
-  },
-  {
-    time: "May 9, 2024 @ 10:44:30.629",
-    source: "wazuh-archives-4-x-2024.05.09",
-    clusternode: "node01",
-    clustername: "wazuh",
-    agentIp: "10.0.2.15",
-    agentName: "Ubuntu22.04",
-    agentId: "001",
-    agentLabelsGroup: "Team_A",
-    managername: "wazuh-server",
-    decodername: "ossec",
-    fullLog: "df -P: overlay 31811408 5892340 24277596 20% /var/lib/docker/overlay2/2ba1c744e3ea9a219ba51cce1c37d88812ea8996e58b2bd948c96f2c3fd2c01d/merged",
-    inputType: "log",
-    timestamp: "May 9, 2024 @ 10:44:30.629",
-    location: "df -P",
-    id: "1715262270.2434987"
-  },
-  {
-    time: "May 9, 2024 @ 10:44:30.627",
-    source: "wazuh-archives-4-x-2024.05.09",
-    clusternode: "node01",
-    clustername: "wazuh",
-    agentIp: "10.0.2.15",
-    agentName: "Ubuntu22.04",
-    agentId: "001",
-    agentLabelsGroup: "Team_A",
-    managername: "wazuh-server",
-    decodername: "ossec",
-    fullLog: "df -P: overlay 31811408 5892340 24277596 20% /var/lib/docker/overlay2/35b3ec75e9d38a4edc77991ffa9c7d0e4af1b7c11dc68f7f8e5dd5d87ff3c391/merged",
-    inputType: "log", 
-    timestamp: "May 9, 2024 @ 10:44:30.627",
-    location: "df -P",
-    id: "1715262270.2434987"
-  },
-  {
-    time: "May 9, 2024 @ 10:44:30.625",
-    source: "wazuh-archives-4-x-2024.05.09",
-    clusternode: "node01",
-    clustername: "wazuh",
-    agentIp: "10.0.2.15",
-    agentName: "Ubuntu22.04",
-    agentId: "001",
-    agentLabelsGroup: "Team_A",
-    managername: "wazuh-server",
-    decodername: "ossec",
-    fullLog: "df -P: vvagrant-ts8097f84.445270344.432844440.92% /vagrant",
-    inputType: "log",
-    timestamp: "May 9, 2024 @ 10:44:30.625",
-    location: "df -P",
-    id: "1715262270.2434987"
-  }
-];
+interface Log {
+  id: string;
+  timestamp: string;
+  agentId: string;
+  agentName: string;
+  decoder: string;
+  ruleId: string;
+  ruleDescription: string;
+  level: number;
+  fullLog: string;
+  data: any;
+}
 
-// Sample chart data based on timestamps
-const chartData = [
-  { time: "12:00", count: 1200 },
-  { time: "13:00", count: 1500 },
-  { time: "14:00", count: 800 },
-  { time: "15:00", count: 1800 },
-  { time: "16:00", count: 1300 },
-  { time: "17:00", count: 1700 },
-  { time: "18:00", count: 2100 },
-  { time: "19:00", count: 1600 },
-  { time: "20:00", count: 2300 },
-  { time: "21:00", count: 3100 },
-  { time: "22:00", count: 2800 },
-  { time: "23:00", count: 3700 },
-  { time: "00:00", count: 4200 },
-  { time: "01:00", count: 5100 },
-  { time: "02:00", count: 6300 },
-  { time: "03:00", count: 7800 },
-  { time: "04:00", count: 6800 },
-  { time: "05:00", count: 5300 },
-  { time: "06:00", count: 800 },
-  { time: "07:00", count: 400 },
-  { time: "08:00", count: 200 },
-  { time: "09:00", count: 1500 }
-];
-
-// Available fields for selection
-const availableFields = [
-  { name: "_index", type: "t" },
-  { name: "@timestamp", type: "t" },
-  { name: "agent.id", type: "t" },
-  { name: "agent.ip", type: "t" },
-  { name: "agent.name", type: "t" },
-  { name: "clustername", type: "t" },
-  { name: "clusternode", type: "t" },
-  { name: "data.audit.arch", type: "t" },
-  { name: "data.audit.auid", type: "t" },
-  { name: "data.audit.command", type: "t" },
-  { name: "data.audit.cwd", type: "t" },
-  { name: "data.audit.directory.inode", type: "t" },
-  { name: "data.audit.directory.mode", type: "t" }
-];
-
-export default function EDRLogsDashboard() {
-  const [selectedFields, setSelectedFields] = useState(["_source"]);
+export default function Logs() {
+  const [logs, setLogs] = useState<Log[]>([]);
+  const [filteredLogs, setFilteredLogs] = useState<Log[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedLog, setSelectedLog] = useState<Log | null>(null);
+  const [timeRange, setTimeRange] = useState("24hours");
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(100);
-  
-  // Chart component that resembles the histogram in the image
-  const SimpleChart = () => {
-    const maxValue = Math.max(...chartData.map(item => item.count));
-    
+  const [chartData, setChartData] = useState<{ time: string; count: number }[]>([]);
+  const logsPerPage = 50;
+
+  // Fetch logs from API
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const filters: any = {
+        limit: 500,
+      };
+
+      // Add time range filter with more options
+      if (timeRange === "5min") {
+        filters.startDate = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      } else if (timeRange === "15min") {
+        filters.startDate = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      } else if (timeRange === "1hour") {
+        filters.startDate = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      } else if (timeRange === "6hours") {
+        filters.startDate = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+      } else if (timeRange === "24hours") {
+        filters.startDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      } else if (timeRange === "7days") {
+        filters.startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      } else if (timeRange === "30days") {
+        filters.startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      }
+
+      const response = await apiClient.getLogs(filters);
+
+      if (response.success && response.data) {
+        setLogs(response.data);
+        setFilteredLogs(response.data);
+        generateChartData(response.data);
+
+        toast({
+          title: "Logs loaded",
+          description: `Loaded ${response.data.length} logs`,
+        });
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch logs:", error);
+      toast({
+        title: "Failed to fetch logs",
+        description: error.message || "Could not load logs from the server",
+        variant: "destructive",
+      });
+      // Set empty data on error
+      setLogs([]);
+      setFilteredLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generate chart data from logs
+  const generateChartData = (logsData: Log[]) => {
+    const hourCounts: { [key: string]: number } = {};
+
+    // Group logs by hour
+    logsData.forEach((log) => {
+      const date = new Date(log.timestamp);
+      const hour = date.getHours();
+      const hourKey = `${hour.toString().padStart(2, '0')}:00`;
+      hourCounts[hourKey] = (hourCounts[hourKey] || 0) + 1;
+    });
+
+    // Convert to array and sort
+    const data = Object.entries(hourCounts)
+      .map(([time, count]) => ({ time, count }))
+      .sort((a, b) => a.time.localeCompare(b.time));
+
+    setChartData(data);
+  };
+
+  // Apply search filter
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredLogs(logs);
+    } else {
+      const filtered = logs.filter((log) => {
+        const search = searchTerm.toLowerCase();
+        return (
+          log.fullLog.toLowerCase().includes(search) ||
+          log.agentName.toLowerCase().includes(search) ||
+          log.ruleDescription.toLowerCase().includes(search) ||
+          log.decoder.toLowerCase().includes(search)
+        );
+      });
+      setFilteredLogs(filtered);
+    }
+    setCurrentPage(1);
+  }, [searchTerm, logs]);
+
+  // Fetch logs ONLY on initial mount - NO auto-refresh
+  useEffect(() => {
+    fetchLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Pagination
+  const indexOfLastLog = currentPage * logsPerPage;
+  const indexOfFirstLog = indexOfLastLog - logsPerPage;
+  const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
+  const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
+
+  // Chart component
+  const LogsChart = () => {
+    if (chartData.length === 0) {
+      return (
+        <div className="h-64 flex items-center justify-center text-muted-foreground">
+          No data available
+        </div>
+      );
+    }
+
+    const maxValue = Math.max(...chartData.map((item) => item.count), 1);
+
     return (
-      <div className="h-64 w-full flex items-end space-x-1">
+      <div className="h-64 w-full flex items-end space-x-1 px-4">
         {chartData.map((bar, index) => {
           const height = (bar.count / maxValue) * 100;
           return (
             <div key={index} className="flex flex-col items-center flex-grow">
-              <div 
-                className="bg-teal-500 w-full rounded-t-sm" 
-                style={{ height: `${height}%` }}
-              ></div>
-              {index % 3 === 0 && (
-                <span className="text-xs text-gray-400 mt-1">{bar.time}</span>
+              <div
+                className="bg-blue-500 hover:bg-blue-600 w-full rounded-t-sm transition-all cursor-pointer relative group"
+                style={{ height: `${Math.max(height, 2)}%` }}
+                title={`${bar.time}: ${bar.count} logs`}
+              >
+                <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  {bar.count} logs
+                </div>
+              </div>
+              {index % Math.ceil(chartData.length / 12) === 0 && (
+                <span className="text-xs text-muted-foreground mt-1">{bar.time}</span>
               )}
             </div>
           );
@@ -207,284 +195,270 @@ export default function EDRLogsDashboard() {
     );
   };
 
+  // Get severity badge color based on rule level
+  const getLevelBadge = (level: number) => {
+    if (level >= 12) return <Badge className="bg-red-500">Critical</Badge>;
+    if (level >= 9) return <Badge className="bg-orange-500">High</Badge>;
+    if (level >= 6) return <Badge className="bg-yellow-500">Medium</Badge>;
+    if (level >= 3) return <Badge className="bg-green-500">Low</Badge>;
+    return <Badge className="bg-blue-500">Info</Badge>;
+  };
+
   return (
-    <div className="bg-slate-950 text-slate-200 min-h-screen">
-      <div className="container mx-auto p-4">
-        {/* Discover/Search Bar */}
-        <div className="flex items-center space-x-2 mb-4">
-          <div className="relative w-64 border border-slate-700 rounded-md flex items-center px-2">
-            <span className="text-gray-400">wazuh-archives-*</span>
-            <ChevronDown className="h-4 w-4 ml-2 text-gray-400" />
-          </div>
-          
-          <div className="relative flex-1 flex items-center">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
-            </div>
-            <Input 
-              className="pl-10 bg-slate-900 border-slate-700" 
-              placeholder="Search" 
-            />
-          </div>
-          
-          <Select defaultValue="24hours">
-            <SelectTrigger className="w-40 bg-slate-900 border-slate-700">
-              <SelectValue placeholder="Last 24 hours" />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-900 border-slate-700">
-              <SelectItem value="24hours">Last 24 hours</SelectItem>
-              <SelectItem value="7days">Last 7 days</SelectItem>
-              <SelectItem value="30days">Last 30 days</SelectItem>
-              <SelectItem value="custom">Custom</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Button variant="outline" className="bg-slate-900 border-slate-700 text-slate-200">
-            Show dates
-          </Button>
-          
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Security Logs</h1>
+          <p className="text-muted-foreground">
+            Real-time security event logs from Wazuh
+          </p>
         </div>
-        
-        {/* Filter Bar */}
-        <div className="flex items-center mb-4">
-          <Button variant="ghost" className="flex items-center text-blue-400">
-            <PlusCircle className="h-4 w-4 mr-1" />
-            Add filter
+        <Button onClick={fetchLogs} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Search and Filters */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center space-x-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search logs by content, agent, decoder..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                >
+                  <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                </button>
+              )}
+            </div>
+
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[180px]">
+                <Calendar className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Time range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5min">Last 5 minutes</SelectItem>
+                <SelectItem value="15min">Last 15 minutes</SelectItem>
+                <SelectItem value="1hour">Last 1 hour</SelectItem>
+                <SelectItem value="6hours">Last 6 hours</SelectItem>
+                <SelectItem value="24hours">Last 24 hours</SelectItem>
+                <SelectItem value="7days">Last 7 days</SelectItem>
+                <SelectItem value="30days">Last 30 days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Chart */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Logs Over Time</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <LogsChart />
+        </CardContent>
+      </Card>
+
+      {/* Results Summary */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Showing {indexOfFirstLog + 1}-{Math.min(indexOfLastLog, filteredLogs.length)} of{" "}
+          {filteredLogs.length} logs
+          {searchTerm && ` (filtered from ${logs.length} total)`}
+        </p>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
           </Button>
-        </div>
-        
-        {/* Main Content Area */}
-        <div className="flex gap-4">
-          {/* Left Sidebar */}
-          <div className="w-72 bg-slate-900 rounded-lg border border-slate-800 p-4">
-            <div className="mb-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
-                <Input 
-                  className="pl-10 bg-slate-800 border-slate-700" 
-                  placeholder="Search field names" 
-                />
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">Filter by type</span>
-              <Badge className="bg-slate-700 text-slate-200">3</Badge>
-            </div>
-            
-            <div className="mb-6">
-              <h3 className="text-sm font-medium mb-2">Selected fields</h3>
-              <div className="border border-slate-700 rounded-md p-2 mb-2">
-                <div className="flex items-center text-sm">
-                  <span className="w-6 text-slate-500">T</span>
-                  <span className="flex-1">_source</span>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-sm font-medium mb-2">Available fields</h3>
-              <div className="space-y-1 max-h-96 overflow-y-auto">
-                {availableFields.map((field, index) => (
-                  <div key={index} className="flex items-center justify-between border border-slate-700 rounded-md p-2">
-                    <div className="flex items-center text-sm">
-                      <span className="w-6 text-slate-500">{field.type}</span>
-                      <span>{field.name}</span>
-                    </div>
-                    <div className="flex">
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                        <Search className="h-4 w-4 text-blue-400" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                        <PlusCircle className="h-4 w-4 text-blue-400" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          {/* Main Content */}
-          <div className="flex-1">
-            {/* Stats and Chart */}
-            <Card className="mb-4 bg-slate-900 border-slate-800">
-              <CardContent className="pt-6">
-                <div className="text-center mb-4">
-                  <div className="text-2xl font-bold">82,422 hits</div>
-                  <div className="text-sm text-slate-400">
-                    May 8, 2024 @ 10:44:39.935 - May 9, 2024 @ 10:44:39.935 per
-                    <Select defaultValue="auto">
-                      <SelectTrigger className="w-24 ml-2 h-7 bg-slate-800 border-slate-700">
-                        <SelectValue placeholder="Auto" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        <SelectItem value="auto">Auto</SelectItem>
-                        <SelectItem value="minute">Minute</SelectItem>
-                        <SelectItem value="hour">Hour</SelectItem>
-                        <SelectItem value="day">Day</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <SimpleChart />
-                
-                <div className="text-center text-sm text-slate-400 mt-2">
-                  timestamp per 30 minutes
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* Logs Table */}
-            <Card className="bg-slate-900 border-slate-800">
-              <CardHeader className="px-4 py-2 border-b border-slate-800">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <Button variant="ghost" size="sm" className="text-slate-400">
-                      <BarChart4 className="h-4 w-4 mr-1" />
-                      Columns
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-slate-400">
-                      <Filter className="h-4 w-4 mr-1" />
-                      Sort fields
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-slate-800 hover:bg-slate-800">
-                    <TableHead className="font-medium">
-                      Time (timestamp)
-                      <ChevronDown className="inline h-4 w-4 ml-1" />
-                    </TableHead>
-                    <TableHead className="font-medium">Source</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logData.map((log, index) => (
-                    <TableRow 
-                      key={index} 
-                      className="border-slate-800 hover:bg-slate-800"
-                    >
-                      <TableCell className="font-medium">
-                        <div className="flex items-center">
-                          <Button variant="ghost" size="sm" className="p-0 mr-2">
-                            <Search className="h-4 w-4 text-blue-400" />
-                          </Button>
-                          {log.time}
-                        </div>
-                      </TableCell>
-                      <TableCell className="w-full">
-                        <div className="grid grid-cols-6 gap-1 text-xs">
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">clusternode:</span>
-                            {log.clusternode}
-                          </span>
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">clustername:</span>
-                            {log.clustername}
-                          </span>
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">agent.ip:</span>
-                            {log.agentIp}
-                          </span>
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">agent.name:</span>
-                            {log.agentName}
-                          </span>
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">agent.id:</span>
-                            {log.agentId}
-                          </span>
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">agent.labels.group:</span>
-                            {log.agentLabelsGroup}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-1 gap-1 text-xs mt-1">
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">full_log:</span>
-                            <span className="text-slate-300">{log.fullLog}</span>
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-6 gap-1 text-xs mt-1">
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">input.type:</span>
-                            {log.inputType}
-                          </span>
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">@timestamp:</span>
-                            {log.timestamp}
-                          </span>
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">location:</span>
-                            {log.location}
-                          </span>
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">id:</span>
-                            {log.id}
-                          </span>
-                          <span className="flex items-center">
-                            <span className="font-medium text-slate-400 mr-1">_index:</span>
-                            {log.source}
-                          </span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              
-              {/* Pagination */}
-              <div className="flex items-center justify-between border-t border-slate-800 p-2">
-                <div className="flex items-center text-sm">
-                  <span className="mr-2">Rows per page:</span>
-                  <Select defaultValue="100">
-                    <SelectTrigger className="w-16 h-8 bg-slate-800 border-slate-700">
-                      <SelectValue placeholder="100" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700">
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                      <SelectItem value="250">250</SelectItem>
-                      <SelectItem value="500">500</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="flex items-center">
-                  <Button variant="ghost" size="sm" disabled>
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={currentPage === 1 ? "secondary" : "ghost"}
-                    size="sm"
-                    className={currentPage === 1 ? "bg-slate-700" : ""}
-                  >
-                    1
-                  </Button>
-                  <Button variant="ghost" size="sm">2</Button>
-                  <Button variant="ghost" size="sm">3</Button>
-                  <Button variant="ghost" size="sm">4</Button>
-                  <Button variant="ghost" size="sm">5</Button>
-                  <Button variant="ghost" size="sm">
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          </div>
+          <span className="text-sm">
+            Page {currentPage} of {totalPages || 1}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage >= totalPages}
+          >
+            Next
+          </Button>
         </div>
       </div>
+
+      {/* Logs Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Agent</TableHead>
+                  <TableHead>Level</TableHead>
+                  <TableHead>Decoder</TableHead>
+                  <TableHead>Rule</TableHead>
+                  <TableHead>Log Message</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+                      <p className="text-muted-foreground">Loading logs...</p>
+                    </TableCell>
+                  </TableRow>
+                ) : currentLogs.length > 0 ? (
+                  currentLogs.map((log) => (
+                    <>
+                      <TableRow
+                        key={log.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setSelectedLog(selectedLog?.id === log.id ? null : log)}
+                      >
+                        <TableCell>
+                          {selectedLog?.id === log.id ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{log.agentName}</p>
+                            <p className="text-xs text-muted-foreground">{log.agentId}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getLevelBadge(log.level)}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{log.decoder}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{log.ruleId}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                              {log.ruleDescription}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-[400px]">
+                          <p className="truncate font-mono text-sm">{log.fullLog}</p>
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Expanded Log Details */}
+                      {selectedLog?.id === log.id && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="bg-muted/30">
+                            <div className="p-4 space-y-4">
+                              <div>
+                                <h4 className="font-semibold mb-2">Full Log</h4>
+                                <pre className="bg-slate-900 p-4 rounded-lg text-sm overflow-x-auto">
+                                  {log.fullLog}
+                                </pre>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <h4 className="font-semibold mb-2">Log Details</h4>
+                                  <dl className="space-y-1 text-sm">
+                                    <div className="flex">
+                                      <dt className="font-medium w-32">Timestamp:</dt>
+                                      <dd className="text-muted-foreground">
+                                        {new Date(log.timestamp).toLocaleString()}
+                                      </dd>
+                                    </div>
+                                    <div className="flex">
+                                      <dt className="font-medium w-32">Agent Name:</dt>
+                                      <dd className="text-muted-foreground">{log.agentName}</dd>
+                                    </div>
+                                    <div className="flex">
+                                      <dt className="font-medium w-32">Agent ID:</dt>
+                                      <dd className="text-muted-foreground">{log.agentId}</dd>
+                                    </div>
+                                    <div className="flex">
+                                      <dt className="font-medium w-32">Decoder:</dt>
+                                      <dd className="text-muted-foreground">{log.decoder}</dd>
+                                    </div>
+                                    <div className="flex">
+                                      <dt className="font-medium w-32">Rule ID:</dt>
+                                      <dd className="text-muted-foreground">{log.ruleId}</dd>
+                                    </div>
+                                    <div className="flex">
+                                      <dt className="font-medium w-32">Level:</dt>
+                                      <dd className="text-muted-foreground">{log.level}</dd>
+                                    </div>
+                                  </dl>
+                                </div>
+
+                                {log.data && Object.keys(log.data).length > 0 && (
+                                  <div>
+                                    <h4 className="font-semibold mb-2">Additional Data</h4>
+                                    <pre className="bg-slate-900 p-3 rounded-lg text-xs overflow-x-auto max-h-48">
+                                      {JSON.stringify(log.data, null, 2)}
+                                    </pre>
+                                  </div>
+                                )}
+                              </div>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedLog(null)}
+                              >
+                                Close Details
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <Filter className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-muted-foreground">
+                        {searchTerm ? "No logs match your search" : "No logs found"}
+                      </p>
+                      {searchTerm && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSearchTerm("")}
+                          className="mt-2"
+                        >
+                          Clear search
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

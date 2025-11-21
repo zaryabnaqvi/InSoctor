@@ -1,0 +1,335 @@
+import axios, { AxiosInstance } from 'axios';
+import https from 'https';
+import { config } from '@/config';
+import logger from '@/config/logger';
+import { Alert, WazuhLog, AlertFilters, LogFilters } from '@/types';
+
+/**
+ * Wazuh Indexer Service
+ * Queries alerts and events from Wazuh Indexer (Elasticsearch/OpenSearch)
+ */
+class WazuhIndexerService {
+    private client: AxiosInstance;
+
+    constructor() {
+        this.client = axios.create({
+            baseURL: config.wazuhIndexer.url,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            auth: {
+                username: config.wazuhIndexer.username,
+                password: config.wazuhIndexer.password,
+            },
+            httpsAgent: new https.Agent({
+                rejectUnauthorized: config.wazuhIndexer.verifySSL,
+            }),
+        });
+
+        logger.info('Wazuh Indexer service initialized', {
+            url: config.wazuhIndexer.url,
+            verifySSL: config.wazuhIndexer.verifySSL,
+        });
+    }
+
+    /**
+     * Query alerts from Wazuh Indexer
+     */
+    async getAlerts(filters?: AlertFilters): Promise<Alert[]> {
+        try {
+            const query = this.buildAlertsQuery(filters);
+
+            logger.debug('Querying Wazuh Indexer for alerts', {
+                url: `${config.wazuhIndexer.url}/wazuh-alerts-*/_search`,
+                query
+            });
+
+            const response = await this.client.post('/wazuh-alerts-*/_search', query);
+
+            const hits = response.data?.hits?.hits || [];
+            const alerts: Alert[] = hits.map((hit: any) => this.transformAlert(hit._source));
+
+            logger.info(`Retrieved ${alerts.length} alerts from Wazuh Indexer`);
+            return alerts;
+        } catch (error: any) {
+            logger.error('Failed to query alerts from Wazuh Indexer', {
+                error: error.message,
+                code: error.code,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                config: {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                },
+            });
+            throw new Error(`Wazuh Indexer error: ${error.message}`);
+        }
+    }
+
+    /**
+     * Query logs from Wazuh Indexer
+     */
+    async getLogs(filters?: LogFilters): Promise<WazuhLog[]> {
+        try {
+            const query = this.buildLogsQuery(filters);
+
+            logger.debug('Querying Wazuh Indexer for logs', { query });
+
+            const response = await this.client.post('/wazuh-alerts-*/_search', query);
+
+            const hits = response.data?.hits?.hits || [];
+            const logs: WazuhLog[] = hits.map((hit: any) => this.transformLog(hit._source));
+
+            logger.info(`Retrieved ${logs.length} logs from Wazuh Indexer`);
+            return logs;
+        } catch (error: any) {
+            logger.error('Failed to query logs from Wazuh Indexer', {
+                error: error.message,
+                response: error.response?.data,
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Get alert statistics
+     */
+    async getAlertStats(): Promise<any> {
+        try {
+            const query = {
+                size: 0,
+                aggs: {
+                    by_severity: {
+                        terms: {
+                            field: 'rule.level',
+                            size: 20,
+                        },
+                    },
+                    by_rule: {
+                        terms: {
+                            field: 'rule.id',
+                            size: 10,
+                        },
+                    },
+                    by_agent: {
+                        terms: {
+                            field: 'agent.name',
+                            size: 10,
+                        },
+                    },
+                },
+            };
+
+            const response = await this.client.post('/wazuh-alerts-*/_search', query);
+
+            return {
+                total: response.data?.hits?.total?.value || 0,
+                aggregations: response.data?.aggregations || {},
+            };
+        } catch (error: any) {
+            logger.error('Failed to get alert stats from Wazuh Indexer', {
+                error: error.message,
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Build Elasticsearch query for alerts
+     */
+    private buildAlertsQuery(filters?: AlertFilters): any {
+        const must: any[] = [];
+
+        // Time range filter
+        if (filters?.startDate || filters?.endDate) {
+            const range: any = {};
+            if (filters.startDate) range.gte = filters.startDate;
+            if (filters.endDate) range.lte = filters.endDate;
+
+            must.push({
+                range: {
+                    timestamp: range,
+                },
+            });
+        }
+
+        // Severity filter (based on rule level)
+        if (filters?.severity && filters.severity.length > 0) {
+            const levels = filters.severity.map(s => this.severityToLevel(s));
+            must.push({
+                terms: {
+                    'rule.level': levels,
+                },
+            });
+        }
+
+        // Agent filter
+        if (filters?.agentId) {
+            must.push({
+                term: {
+                    'agent.id': filters.agentId,
+                },
+            });
+        }
+
+        // Rule filter
+        if (filters?.ruleId) {
+            must.push({
+                term: {
+                    'rule.id': filters.ruleId,
+                },
+            });
+        }
+
+        return {
+            size: filters?.limit || 500,
+            from: filters?.offset || 0,
+            sort: [{ timestamp: { order: 'desc' } }],
+            query: {
+                bool: {
+                    must: must.length > 0 ? must : [{ match_all: {} }],
+                },
+            },
+        };
+    }
+
+    /**
+     * Build Elasticsearch query for logs
+     */
+    private buildLogsQuery(filters?: LogFilters): any {
+        const must: any[] = [];
+
+        // Time range
+        if (filters?.startDate || filters?.endDate) {
+            const range: any = {};
+            if (filters.startDate) range.gte = filters.startDate;
+            if (filters.endDate) range.lte = filters.endDate;
+
+            must.push({
+                range: {
+                    timestamp: range,
+                },
+            });
+        }
+
+        // Agent filter
+        if (filters?.agentId) {
+            must.push({
+                term: {
+                    'agent.id': filters.agentId,
+                },
+            });
+        }
+
+        if (filters?.agentName) {
+            must.push({
+                match: {
+                    'agent.name': filters.agentName,
+                },
+            });
+        }
+
+        // Decoder filter
+        if (filters?.decoder) {
+            must.push({
+                match: {
+                    'decoder.name': filters.decoder,
+                },
+            });
+        }
+
+        // Search filter
+        if (filters?.search) {
+            must.push({
+                multi_match: {
+                    query: filters.search,
+                    fields: ['full_log', 'rule.description', 'data.*'],
+                },
+            });
+        }
+
+        return {
+            size: filters?.limit || 100,
+            from: filters?.offset || 0,
+            sort: [{ timestamp: { order: 'desc' } }],
+            query: {
+                bool: {
+                    must: must.length > 0 ? must : [{ match_all: {} }],
+                },
+            },
+        };
+    }
+
+    /**
+     * Transform Wazuh Indexer alert to our Alert format
+     */
+    private transformAlert(source: any): Alert {
+        const ruleLevel = source.rule?.level || 0;
+
+        return {
+            id: source.id || source._id || `${source.timestamp}-${source.rule?.id}`,
+            title: source.rule?.description || 'Unknown Alert',
+            description: source.full_log || source.rule?.description || '',
+            severity: this.levelToSeverity(ruleLevel),
+            status: 'open',
+            source: source.agent?.name || source.manager?.name || 'Unknown',
+            timestamp: source.timestamp || new Date().toISOString(),
+            assignedTo: undefined,
+            caseId: undefined,
+            caseStatus: undefined,
+            rawData: source,
+        };
+    }
+
+    /**
+     * Transform Wazuh Indexer log to our WazuhLog format
+     */
+    private transformLog(source: any): WazuhLog {
+        return {
+            id: source.id || source._id || `${source.timestamp}`,
+            timestamp: source.timestamp || new Date().toISOString(),
+            agentId: source.agent?.id || '',
+            agentName: source.agent?.name || 'Unknown',
+            decoder: source.decoder?.name || '',
+            ruleId: source.rule?.id || '',
+            ruleDescription: source.rule?.description || '',
+            level: source.rule?.level || 0,
+            fullLog: source.full_log || '',
+            data: source.data || {},
+        };
+    }
+
+    /**
+     * Convert Wazuh rule level to severity
+     */
+    private levelToSeverity(level: number): 'critical' | 'high' | 'medium' | 'low' | 'info' {
+        if (level >= 12) return 'critical';
+        if (level >= 9) return 'high';
+        if (level >= 6) return 'medium';
+        if (level >= 3) return 'low';
+        return 'info';
+    }
+
+    /**
+     * Convert severity to Wazuh rule level range
+     */
+    private severityToLevel(severity: string): number[] {
+        switch (severity) {
+            case 'critical':
+                return [12, 13, 14, 15];
+            case 'high':
+                return [9, 10, 11];
+            case 'medium':
+                return [6, 7, 8];
+            case 'low':
+                return [3, 4, 5];
+            case 'info':
+                return [0, 1, 2];
+            default:
+                return [];
+        }
+    }
+}
+
+export default new WazuhIndexerService();
