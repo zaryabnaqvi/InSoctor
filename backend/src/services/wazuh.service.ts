@@ -49,6 +49,9 @@ export class WazuhService {
             this.tokenExpiry = Date.now() + (14 * 60 * 1000);
 
             logger.info('Wazuh authentication successful');
+            if (!this.token) {
+                throw new Error('Failed to retrieve token from Wazuh response');
+            }
             return this.token;
         } catch (error: any) {
             logger.error('Wazuh authentication failed', { error: error.message });

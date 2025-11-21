@@ -13,7 +13,6 @@ interface ServiceConfig {
 interface Config {
     port: number;
     nodeEnv: string;
-    jwtSecret: string;
     frontendUrl: string;
     wazuh: ServiceConfig;
     wazuhIndexer: ServiceConfig;
@@ -23,6 +22,10 @@ interface Config {
     polling: {
         alertInterval: number;
         logBatchSize: number;
+    };
+    jwt: {
+        secret: string;
+        expiresIn: string;
     };
 }
 
@@ -43,7 +46,6 @@ const getBooleanEnv = (key: string, defaultValue: boolean = false): boolean => {
 export const config: Config = {
     port: parseInt(process.env.PORT || '3001', 10),
     nodeEnv: process.env.NODE_ENV || 'development',
-    jwtSecret: getEnvVar('JWT_SECRET'),
     frontendUrl: getEnvVar('FRONTEND_URL', 'http://localhost:5173'),
 
     wazuh: {
@@ -82,6 +84,11 @@ export const config: Config = {
         alertInterval: parseInt(process.env.ALERT_POLL_INTERVAL || '15', 10),
         logBatchSize: parseInt(process.env.LOG_STREAM_BATCH_SIZE || '100', 10),
     },
+
+    jwt: {
+        secret: process.env.JWT_SECRET || 'default-dev-secret-do-not-use-in-prod',
+        expiresIn: process.env.JWT_EXPIRES_IN || '24h'
+    }
 };
 
 export default config;

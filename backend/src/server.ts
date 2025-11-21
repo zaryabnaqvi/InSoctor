@@ -11,6 +11,8 @@ import logsRoutes from './routes/logs.routes';
 import casesRoutes from './routes/cases.routes';
 import rulesRoutes from './routes/rules.routes';
 import agentsRoutes from './routes/agents.routes';
+import authRoutes from './routes/auth.routes';
+import usersRoutes from './routes/users.routes';
 
 const app: Application = express();
 
@@ -56,6 +58,8 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/cases', casesRoutes);

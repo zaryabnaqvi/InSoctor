@@ -6,22 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Pagination } from '@/components/ui/pagination';
-// import { toast } from '@/components/ui/use-toast';
-import { Search, RefreshCw, Filter, ArrowUpDown, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Search, RefreshCw, Filter, ArrowUpDown, CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AlertsInsights from '@/components/alerts-insight';
 
-export  function Alerts() {
+export function Alerts() {
   const { filteredAlerts, updateAlert, filterBySeverity, filterByStatus, clearFilters, activeFilters } = useAlerts();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const itemsPerPage = 10;
-  
+  const itemsPerPage = 50;
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -29,14 +27,14 @@ export  function Alerts() {
       setIsLoading(false);
     }, 500);
   };
-  
+
   const handleRefresh = () => {
     setIsLoading(true);
     toast({
       title: "Refreshing alerts",
       description: "Fetching the latest security alerts...",
     });
-    
+
     setTimeout(() => {
       setIsLoading(false);
       toast({
@@ -45,50 +43,51 @@ export  function Alerts() {
       });
     }, 1000);
   };
-  
+
   const handleStatusChange = (alertId: string, status: 'open' | 'investigating' | 'resolved' | 'false-positive') => {
     updateAlert(alertId, { status });
-    
+
     const statusMessages = {
       investigating: "Investigation started",
       resolved: "Alert marked as resolved",
       'false-positive': "Alert marked as false positive",
       open: "Alert reopened"
     };
-    
+
     toast({
       title: statusMessages[status],
       description: "Alert status has been updated successfully.",
     });
   };
-  
+
   // Filter and paginate alerts
-  const displayedAlerts = filteredAlerts
-    .filter(alert => 
-      alert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      alert.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      alert.source.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  
-  const totalPages = Math.ceil(filteredAlerts.length / itemsPerPage);
-  
+  const searchFiltered = filteredAlerts.filter(alert =>
+    alert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    alert.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    alert.source.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const displayedAlerts = searchFiltered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(searchFiltered.length / itemsPerPage);
+
   const handleSeverityFilterChange = (severity: string) => {
     if (severity === 'all') {
       clearFilters();
     } else {
       filterBySeverity([severity as any]);
     }
+    setCurrentPage(1);
   };
-  
+
   const handleStatusFilterChange = (status: string) => {
     if (status === 'all') {
       clearFilters();
     } else {
       filterByStatus([status]);
     }
+    setCurrentPage(1);
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between">
@@ -98,8 +97,8 @@ export  function Alerts() {
             View and manage active security alerts within your environment
           </p>
         </div>
-        <Button 
-          onClick={handleRefresh} 
+        <Button
+          onClick={handleRefresh}
           className="h-9 gap-1"
           disabled={isLoading}
         >
@@ -107,12 +106,12 @@ export  function Alerts() {
           Refresh
         </Button>
       </div>
-      
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>Alert Management</CardTitle>
           <CardDescription>
-            {filteredAlerts.length} alerts found in your environment
+            Showing {displayedAlerts.length} of {searchFiltered.length} alerts {searchTerm && `(filtered from ${filteredAlerts.length} total)`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -120,15 +119,15 @@ export  function Alerts() {
             <div className="relative w-full sm:w-96">
               <form onSubmit={handleSearch}>
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input 
+                <Input
                   placeholder="Search alerts..."
-                  className="pl-10 w-full" 
+                  className="pl-10 w-full"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </form>
             </div>
-            
+
             <div className="flex space-x-2">
               <div>
                 <Select onValueChange={handleSeverityFilterChange}>
@@ -146,7 +145,7 @@ export  function Alerts() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Select onValueChange={handleStatusFilterChange}>
                   <SelectTrigger className="w-[130px]">
@@ -164,11 +163,11 @@ export  function Alerts() {
               </div>
             </div>
           </div>
-          
+
           {activeFilters.severities.length > 0 || activeFilters.statuses.length > 0 ? (
             <div className="flex items-center mb-4 gap-2">
               <span className="text-sm text-muted-foreground">Active filters:</span>
-              
+
               {activeFilters.severities.map(severity => (
                 <Badge key={severity} variant="secondary" className="gap-1">
                   {severity}
@@ -177,7 +176,7 @@ export  function Alerts() {
                   </button>
                 </Badge>
               ))}
-              
+
               {activeFilters.statuses.map(status => (
                 <Badge key={status} variant="secondary" className="gap-1">
                   {status}
@@ -186,9 +185,9 @@ export  function Alerts() {
                   </button>
                 </Badge>
               ))}
-              
-              <Button 
-                variant="ghost" 
+
+              <Button
+                variant="ghost"
                 className="h-7 px-2 text-xs"
                 onClick={clearFilters}
               >
@@ -196,12 +195,12 @@ export  function Alerts() {
               </Button>
             </div>
           ) : null}
-          
+
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[180px]">
+                  <TableHead className="w-[100px]">
                     <div className="flex items-center space-x-1">
                       <span>Severity</span>
                       <ArrowUpDown className="h-3 w-3" />
@@ -214,6 +213,7 @@ export  function Alerts() {
                     </div>
                   </TableHead>
                   <TableHead className="hidden md:table-cell">Source</TableHead>
+                  <TableHead className="hidden lg:table-cell">Rule ID</TableHead>
                   <TableHead className="hidden md:table-cell">
                     <div className="flex items-center space-x-1">
                       <span>Time</span>
@@ -252,6 +252,11 @@ export  function Alerts() {
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{alert.source}</TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {alert.rawData?.rule?.id || 'N/A'}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {formatDistanceToNow(new Date(alert.timestamp), { addSuffix: true })}
                       </TableCell>
@@ -260,58 +265,56 @@ export  function Alerts() {
                           {alert.status === 'open' && (
                             <Button
                               variant="outline"
-                             
+                              size="sm"
                               onClick={() => handleStatusChange(alert.id, 'investigating')}
                             >
-                              <Clock size={20} />
+                              <Clock className="h-4 w-4 mr-1" />
                               Investigate
                             </Button>
                           )}
                           {(alert.status === 'open' || alert.status === 'investigating') && (
                             <Button
                               variant="outline"
-                              
+                              size="sm"
                               onClick={() => handleStatusChange(alert.id, 'resolved')}
                               className="text-green-500 border-green-500"
                             >
-                              <CheckCircle size={20} />
+                              <CheckCircle className="h-4 w-4 mr-1" />
                               Resolve
                             </Button>
                           )}
-                          {true && (
-                            <Select
-                              onValueChange={(value) => handleStatusChange(alert.id, value as any)}
-                            >
-                              <SelectTrigger className="h-8 w-8 p-0">
-                                <Button variant="ghost"  className="h-8 w-8">
-                                  <ArrowUpDown size={20} />
-                                </Button>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {alert.status !== 'investigating' && (
-                                  <SelectItem value="investigating">Investigate</SelectItem>
-                                )}
-                                {alert.status !== "resolved" && (
-                                  <SelectItem value="resolved">Resolve</SelectItem>
-                                )}
-                                {alert.status !== "false-positive" && (
-                                  <SelectItem value="false-positive">False Positive</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                          )}
+                          <Select
+                            onValueChange={(value) => handleStatusChange(alert.id, value as any)}
+                          >
+                            <SelectTrigger className="h-8 w-8 p-0">
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <ArrowUpDown className="h-4 w-4" />
+                              </Button>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {alert.status !== 'investigating' && (
+                                <SelectItem value="investigating">Investigate</SelectItem>
+                              )}
+                              {alert.status !== "resolved" && (
+                                <SelectItem value="resolved">Resolve</SelectItem>
+                              )}
+                              {alert.status !== "false-positive" && (
+                                <SelectItem value="false-positive">False Positive</SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Search className="h-10 w-10 mb-2" />
                         <p>No alerts found matching your criteria</p>
-                        <Button 
-                          variant="link" 
+                        <Button
+                          variant="link"
                           onClick={clearFilters}
                         >
                           Clear all filters
@@ -323,14 +326,32 @@ export  function Alerts() {
               </TableBody>
             </Table>
           </div>
-          
-          {filteredAlerts.length > itemsPerPage && (
-            <div className="flex justify-center mt-4">
-              <Pagination 
-                totalPages={totalPages}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-              />
+
+          {searchFiltered.length > itemsPerPage && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages} • {searchFiltered.length} total alerts
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
@@ -338,7 +359,6 @@ export  function Alerts() {
     </div>
   );
 }
-
 
 export default function AlertsDashboard() {
   return (
@@ -351,17 +371,17 @@ export default function AlertsDashboard() {
           </p>
         </div>
       </div>
-      
+
       <Tabs defaultValue="alerts" className="space-y-6">
         <TabsList>
           <TabsTrigger value="alerts">All Alerts</TabsTrigger>
           <TabsTrigger value="insights">Offense Insights</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="alerts">
           <Alerts />
         </TabsContent>
-        
+
         <TabsContent value="insights">
           <AlertsInsights />
         </TabsContent>

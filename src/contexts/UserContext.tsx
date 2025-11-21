@@ -1,44 +1,63 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+import { apiClient } from "@/services/api.service";
+
+export type UserRole = "admin" | "analyst" | "viewer";
 
 export type User = {
   id: string;
   name: string;
   email: string;
-  avatar: string;
-  role: "admin" | "analyst" | "viewer";
+  avatar?: string;
+  role: UserRole;
 };
 
 type UserContextType = {
   user: User | null;
   setUser: (user: User | null) => void;
   isLoggedIn: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-};
-
-const defaultUser: User = {
-  id: "1",
-  name: "Security Admin",
-  email: "admin@sentinel-security.com",
-  avatar: "https://ui-avatars.com/api/?name=Security+Admin&background=0D8ABC&color=fff",
-  role: "admin"
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(defaultUser); // For demo purposes, we start logged in
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        try {
+          const userData = await apiClient.getMe();
+          setUser(userData);
+        } catch (error) {
+          console.error('Failed to restore session:', error);
+          localStorage.removeItem('auth_token');
+        }
+      }
+      setIsLoading(false);
+    };
+
+    initAuth();
+  }, []);
 
   const login = async (email: string, password: string) => {
-    // Mock login
-    if (email && password) {
-      setUser(defaultUser);
+    try {
+      const { token, user } = await apiClient.login({ email, password });
+      localStorage.setItem('auth_token', token);
+      setUser(user);
       return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
+    localStorage.removeItem('auth_token');
     setUser(null);
   };
 
@@ -48,6 +67,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         user,
         setUser,
         isLoggedIn: !!user,
+        isLoading,
         login,
         logout
       }}

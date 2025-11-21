@@ -69,6 +69,8 @@ class WazuhIndexerService {
 
     /**
      * Query logs from Wazuh Indexer
+     * Note: This queries the alerts index since wazuh-archives may not be enabled
+     * The difference between logs and alerts is in how they're filtered on the frontend
      */
     async getLogs(filters?: LogFilters): Promise<WazuhLog[]> {
         try {
@@ -117,6 +119,17 @@ class WazuhIndexerService {
                             field: 'agent.name',
                             size: 10,
                         },
+                    },
+                    alert_trend: {
+                        date_histogram: {
+                            field: 'timestamp',
+                            fixed_interval: '1h',
+                            min_doc_count: 0,
+                            extended_bounds: {
+                                min: 'now-24h',
+                                max: 'now'
+                            }
+                        }
                     },
                 },
             };

@@ -220,6 +220,38 @@ class ApiClient {
         const response = await this.client.delete(`/agents/${id}`);
         return response.data;
     }
+
+    // Auth
+    async login(credentials: { email: string; password: string }) {
+        const response = await this.client.post('/auth/login', credentials);
+        return response.data;
+    }
+
+    async getMe() {
+        const response = await this.client.get('/auth/me');
+        return response.data;
+    }
+
+    // Users
+    async getUsers() {
+        const response = await this.client.get('/users');
+        return response.data;
+    }
+
+    async createUser(data: any) {
+        const response = await this.client.post('/users', data);
+        return response.data;
+    }
+
+    async updateUser(id: string, data: any) {
+        const response = await this.client.put(`/users/${id}`, data);
+        return response.data;
+    }
+
+    async deleteUser(id: string) {
+        const response = await this.client.delete(`/users/${id}`);
+        return response.data;
+    }
 }
 
 export const apiClient = new ApiClient();

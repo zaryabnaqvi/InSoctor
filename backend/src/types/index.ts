@@ -184,3 +184,22 @@ export interface PaginatedResponse<T> {
     pageSize: number;
     totalPages: number;
 }
+
+// User Types
+export type UserRole = 'admin' | 'analyst' | 'viewer';
+
+export interface User {
+    id: string;
+    name: string;
+    email: string;
+    password?: string; // Only for internal use, never return in API
+    role: UserRole;
+    avatar?: string;
+    createdAt: string;
+    lastLogin?: string;
+}
+
+export interface AuthResponse {
+    token: string;
+    user: Omit<User, 'password'>;
+}
