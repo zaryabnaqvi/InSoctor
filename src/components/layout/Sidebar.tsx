@@ -82,7 +82,7 @@ const menuItems: MenuItem[] = [
   {
     icon: Share2,
     label: 'FIM',
-    path: '/fim'
+    path: '/siem/fim'
   },
   {
     icon: MagnifyingGlassIcon,
