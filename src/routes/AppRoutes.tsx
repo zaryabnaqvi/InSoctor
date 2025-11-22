@@ -16,6 +16,7 @@ const Network = lazy(() => import('@/pages/Network'));
 const Users = lazy(() => import('@/pages/Users'));
 const Integrations = lazy(() => import('@/pages/Integrations'));
 const SOAR = lazy(() => import('@/pages/SOAR'));
+const CaseManagement = lazy(() => import('@/pages/CaseManagement'));
 const Reports = lazy(() => import('@/pages/Reports'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
@@ -89,6 +90,12 @@ export function AppRoutes() {
         <Route path="/soar" element={
           <ProtectedRoute allowedRoles={['admin', 'analyst']}>
             <SOAR />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/soar/cases" element={
+          <ProtectedRoute allowedRoles={['admin', 'analyst']}>
+            <CaseManagement />
           </ProtectedRoute>
         } />
 

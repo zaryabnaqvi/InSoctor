@@ -80,13 +80,16 @@ export interface IrisCase {
     case_description: string;
     case_customer: number;
     case_classification: string;
-    case_severity: string;
-    case_state: string;
+    case_severity?: string;
+    severity_name?: string;
+    case_state?: string;
+    state_name?: string;
     case_open_date: string;
     case_close_date?: string;
     case_soc_id: string;
     owner: string;
     alerts?: string[];
+    [key: string]: any;
 }
 
 export interface Case {
@@ -167,6 +170,7 @@ export interface CaseFilters {
     endDate?: string;
     limit?: number;
     offset?: number;
+    customerId?: number; // IRIS customer/client ID
 }
 
 // API Response Types

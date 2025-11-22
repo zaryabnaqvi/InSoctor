@@ -23,34 +23,65 @@ export class IrisService {
     /**
      * Convert IRIS case to standardized Case format
      */
-    private convertCase(irisCase: IrisCase): Case {
-        const getSeverity = (severity: string): Case['severity'] => {
-            const s = severity.toLowerCase();
+    /**
+     * Convert IRIS case to standardized Case format
+     */
+    private convertCase(irisCase: any): Case {
+        const getSeverity = (severity: any): Case['severity'] => {
+            if (!severity) return 'low';
+            const s = String(severity).toLowerCase();
             if (s.includes('critical')) return 'critical';
             if (s.includes('high')) return 'high';
             if (s.includes('medium')) return 'medium';
             return 'low';
         };
 
-        const getStatus = (state: string): Case['status'] => {
-            const s = state.toLowerCase();
+        const getStatus = (state: any): Case['status'] => {
+            if (!state) return 'open';
+            const s = String(state).toLowerCase();
             if (s.includes('closed') || s.includes('resolved')) return 'closed';
             if (s.includes('investigating') || s.includes('progress')) return 'investigating';
             return 'open';
         };
 
+        // Handle different field names from IRIS versions
+        const severity = irisCase.case_severity || irisCase.severity_name || irisCase.case_severity_name || 'low';
+        const status = irisCase.case_state || irisCase.state_name || irisCase.case_state_name || 'open';
+
         return {
-            id: irisCase.case_id.toString(),
-            title: irisCase.case_name,
-            description: irisCase.case_description,
-            severity: getSeverity(irisCase.case_severity),
-            status: getStatus(irisCase.case_state),
-            createdAt: irisCase.case_open_date,
-            updatedAt: irisCase.case_open_date,
-            assignedTo: irisCase.owner,
+            id: (irisCase.case_id || irisCase.id || '').toString(),
+            title: irisCase.case_name || 'Untitled Case',
+            description: irisCase.case_description || '',
+            severity: getSeverity(severity),
+            status: getStatus(status),
+            createdAt: irisCase.case_open_date || new Date().toISOString(),
+            updatedAt: irisCase.case_open_date || new Date().toISOString(),
+            assignedTo: irisCase.owner || 'Unassigned',
             alerts: irisCase.alerts || [],
             rawData: irisCase,
         };
+    }
+
+    /**
+     * Convert severity string to IRIS severity ID
+     */
+    private severityToId(severity: string): number {
+        const s = severity.toLowerCase();
+        if (s.includes('critical')) return 5;
+        if (s.includes('high')) return 4;
+        if (s.includes('medium')) return 3;
+        if (s.includes('low')) return 2;
+        return 1; // informational
+    }
+
+    /**
+     * Convert status string to IRIS state ID
+     */
+    private statusToId(status: string): number {
+        const s = status.toLowerCase();
+        if (s.includes('closed') || s.includes('resolved')) return 3;
+        if (s.includes('investigating') || s.includes('progress')) return 2;
+        return 1; // open/new
     }
 
     /**
@@ -60,15 +91,23 @@ export class IrisService {
         try {
             logger.debug('Fetching cases from IRIS', { filters });
 
-            const params: any = {};
+            // IRIS uses cid parameter (customer/client ID), default to 1
+            const cid = filters.customerId || 1;
+            const params: any = { cid };
 
             // IRIS API pagination
             if (filters.limit) params.per_page = filters.limit;
             if (filters.offset) params.page = Math.floor(filters.offset / (filters.limit || 10)) + 1;
 
-            const response = await this.client.get('/api/v2/cases', { params });
+            const response = await this.client.get('/manage/cases/list', { params });
 
-            let cases: IrisCase[] = response.data.data || [];
+            // IRIS API returns the array directly in data.data
+            let cases: IrisCase[] = [];
+            if (Array.isArray(response.data.data)) {
+                cases = response.data.data;
+            } else if (response.data.data?.cases) {
+                cases = response.data.data.cases;
+            }
 
             // Apply client-side filters (if IRIS API doesn't support them)
             if (filters.status && filters.status.length > 0) {
@@ -110,7 +149,7 @@ export class IrisService {
         try {
             logger.debug(`Fetching case ${caseId} from IRIS`);
 
-            const response = await this.client.get(`/api/v2/cases/${caseId}`);
+            const response = await this.client.get(`/manage/cases/view/${caseId}`, { params: { cid: 1 } });
             const irisCase: IrisCase = response.data.data;
 
             return this.convertCase(irisCase);
@@ -137,13 +176,14 @@ export class IrisService {
             const payload = {
                 case_name: data.name,
                 case_description: data.description,
-                case_severity: data.severity,
+                case_sev_id: this.severityToId(data.severity),
                 case_customer: data.customer || 1, // Default customer
                 case_classification: data.classification || 'security-incident',
                 case_tags: data.alertIds ? data.alertIds.join(',') : '',
+                cid: data.customer || 1
             };
 
-            const response = await this.client.post('/api/v2/cases', payload);
+            const response = await this.client.post('/manage/cases/add', payload);
             const irisCase: IrisCase = response.data.data;
 
             logger.info(`Case created successfully: ${irisCase.case_id}`);
@@ -169,13 +209,13 @@ export class IrisService {
         try {
             logger.info(`Updating case ${caseId} in IRIS`);
 
-            const payload: any = {};
+            const payload: any = { cid: 1 };
             if (updates.name) payload.case_name = updates.name;
             if (updates.description) payload.case_description = updates.description;
-            if (updates.severity) payload.case_severity = updates.severity;
-            if (updates.status) payload.case_state = updates.status;
+            if (updates.severity) payload.case_sev_id = this.severityToId(updates.severity);
+            if (updates.status) payload.case_state_id = this.statusToId(updates.status);
 
-            const response = await this.client.put(`/api/v2/cases/${caseId}`, payload);
+            const response = await this.client.post(`/manage/cases/update/${caseId}`, payload);
             const irisCase: IrisCase = response.data.data;
 
             logger.info(`Case ${caseId} updated successfully`);
