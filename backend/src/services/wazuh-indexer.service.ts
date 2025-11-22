@@ -343,6 +343,170 @@ class WazuhIndexerService {
                 return [];
         }
     }
+
+    /**
+     * Get FIM (File Integrity Monitoring) alerts from Wazuh Indexer
+     */
+    async getFimAlerts(filters?: any): Promise<any> {
+        try {
+            const query = this.buildFimQuery(filters);
+
+            logger.debug('Querying Wazuh Indexer for FIM alerts', { query });
+
+            const response = await this.client.post('/wazuh-alerts-*/_search', query);
+
+            const hits = response.data?.hits?.hits || [];
+            const fimAlerts = hits.map((hit: any) => this.transformFimAlert(hit._source));
+
+            return {
+                alerts: fimAlerts,
+                total: response.data?.hits?.total?.value || 0,
+                aggregations: response.data?.aggregations || {}
+            };
+        } catch (error: any) {
+            logger.error('Error fetching FIM alerts from Wazuh Indexer', {
+                error: error.message,
+                stack: error.stack
+            });
+            throw new Error(`Failed to fetch FIM alerts: ${error.message}`);
+        }
+    }
+
+    /**
+     * Build Elasticsearch query for FIM alerts
+     */
+    private buildFimQuery(filters?: any) {
+        const limit = filters?.limit || 100;
+        const startDate = filters?.startDate || 'now-24h';
+        const endDate = filters?.endDate || 'now';
+
+        const must: any[] = [
+            {
+                match: {
+                    'rule.groups': 'syscheck'
+                }
+            },
+            {
+                range: {
+                    '@timestamp': {
+                        gte: startDate,
+                        lte: endDate
+                    }
+                }
+            }
+        ];
+
+        // Filter by action type (added, modified, deleted)
+        if (filters?.action) {
+            must.push({
+                match: {
+                    'syscheck.event': filters.action
+                }
+            });
+        }
+
+        // Filter by file path
+        if (filters?.path) {
+            must.push({
+                wildcard: {
+                    'syscheck.path': `*${filters.path}*`
+                }
+            });
+        }
+
+        // Filter by severity/level
+        if (filters?.severity) {
+            const levels = this.severityToLevel(filters.severity);
+            if (levels.length > 0) {
+                must.push({
+                    terms: {
+                        'rule.level': levels
+                    }
+                });
+            }
+        }
+
+        return {
+            size: limit,
+            sort: [
+                {
+                    '@timestamp': {
+                        order: 'desc'
+                    }
+                }
+            ],
+            query: {
+                bool: {
+                    must
+                }
+            },
+            aggs: {
+                actions_breakdown: {
+                    terms: {
+                        field: 'syscheck.event',
+                        size: 10
+                    }
+                },
+                top_paths: {
+                    terms: {
+                        field: 'syscheck.path',
+                        size: 10
+                    }
+                },
+                fim_timeline: {
+                    date_histogram: {
+                        field: '@timestamp',
+                        fixed_interval: '1h',
+                        extended_bounds: {
+                            min: startDate,
+                            max: endDate
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    /**
+     * Transform FIM alert from Wazuh Indexer format
+     */
+    private transformFimAlert(source: any): any {
+        return {
+            id: source._id || source.id || `${source.agent?.id}-${source.timestamp}`,
+            timestamp: source['@timestamp'] || source.timestamp,
+            agent: {
+                id: source.agent?.id || 'unknown',
+                name: source.agent?.name || 'Unknown Agent'
+            },
+            syscheck: {
+                path: source.syscheck?.path || '',
+                event: source.syscheck?.event || source.syscheck?.mode || 'unknown',
+                size_before: source.syscheck?.size_before,
+                size_after: source.syscheck?.size_after,
+                perm_before: source.syscheck?.perm_before,
+                perm_after: source.syscheck?.perm_after,
+                md5_before: source.syscheck?.md5_before,
+                md5_after: source.syscheck?.md5_after,
+                sha1_before: source.syscheck?.sha1_before,
+                sha1_after: source.syscheck?.sha1_after,
+                sha256_before: source.syscheck?.sha256_before,
+                sha256_after: source.syscheck?.sha256_after,
+                uname_before: source.syscheck?.uname_before,
+                uname_after: source.syscheck?.uname_after,
+                gname_before: source.syscheck?.gname_before,
+                gname_after: source.syscheck?.gname_after,
+                mtime_before: source.syscheck?.mtime_before,
+                mtime_after: source.syscheck?.mtime_after
+            },
+            rule: {
+                id: source.rule?.id || '',
+                description: source.rule?.description || '',
+                level: source.rule?.level || 0,
+                groups: source.rule?.groups || []
+            },
+            severity: this.levelToSeverity(source.rule?.level || 0)
+        };
+    }
 }
 
 export default new WazuhIndexerService();

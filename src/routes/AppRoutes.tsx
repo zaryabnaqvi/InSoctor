@@ -9,6 +9,7 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const Alerts = lazy(() => import('@/pages/Alerts'));
 const EDRLogsDashboard = lazy(() => import('@/pages/Logs'));
 const RulesManagement = lazy(() => import('@/pages/Rules'));
+const FIM = lazy(() => import('@/pages/FIM'));
 const Threats = lazy(() => import('@/pages/Threats'));
 const Endpoints = lazy(() => import('@/components/endpoints/Endpoints'));
 const Network = lazy(() => import('@/pages/Network'));
@@ -46,6 +47,12 @@ export function AppRoutes() {
         <Route path="/siem/rules" element={
           <ProtectedRoute>
             <RulesManagement />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/siem/fim" element={
+          <ProtectedRoute>
+            <FIM />
           </ProtectedRoute>
         } />
 

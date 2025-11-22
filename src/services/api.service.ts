@@ -252,6 +252,22 @@ class ApiClient {
         const response = await this.client.delete(`/users/${id}`);
         return response.data;
     }
+
+    // ==================== FIM Methods ====================
+    /**
+     * Get FIM (File Integrity Monitoring) alerts
+     */
+    async getFimAlerts(filters?: {
+        limit?: number;
+        startDate?: string;
+        endDate?: string;
+        action?: string;
+        path?: string;
+        severity?: string;
+    }) {
+        const response = await this.client.get('/fim/alerts', { params: filters });
+        return response.data;
+    }
 }
 
 export const apiClient = new ApiClient();
