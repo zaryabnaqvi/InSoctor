@@ -14,6 +14,7 @@ import agentsRoutes from './routes/agents.routes';
 import authRoutes from './routes/auth.routes';
 import usersRoutes from './routes/users.routes';
 import fimRoutes from './routes/fim.routes';
+import aiRoutes from './routes/ai.routes';
 
 const app: Application = express();
 
@@ -67,6 +68,7 @@ app.use('/api/cases', casesRoutes);
 app.use('/api/rules', rulesRoutes);
 app.use('/api/agents', agentsRoutes);
 app.use('/api/fim', fimRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

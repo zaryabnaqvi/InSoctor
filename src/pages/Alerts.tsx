@@ -12,12 +12,15 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AlertsInsights from '@/components/alerts-insight';
+import { AlertDetailsDialog } from '@/components/dialogs/AlertDetailsDialog';
 
 export function Alerts() {
   const { filteredAlerts, updateAlert, filterBySeverity, filterByStatus, clearFilters, activeFilters } = useAlerts();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState<any | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const itemsPerPage = 50;
 
   const handleSearch = (e: React.FormEvent) => {
@@ -226,7 +229,14 @@ export function Alerts() {
               <TableBody>
                 {displayedAlerts.length > 0 ? (
                   displayedAlerts.map(alert => (
-                    <TableRow key={alert.id}>
+                    <TableRow
+                      key={alert.id}
+                      className="cursor-pointer hover:bg-secondary/50"
+                      onClick={() => {
+                        setSelectedAlert(alert);
+                        setIsDetailsDialogOpen(true);
+                      }}
+                    >
                       <TableCell>
                         <Badge className={cn(
                           alert.severity === 'critical' && "bg-destructive hover:bg-destructive",
@@ -261,7 +271,10 @@ export function Alerts() {
                         {formatDistanceToNow(new Date(alert.timestamp), { addSuffix: true })}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end space-x-1">
+                        <div
+                          className="flex justify-end space-x-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {alert.status === 'open' && (
                             <Button
                               variant="outline"
@@ -356,6 +369,15 @@ export function Alerts() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDetailsDialog
+        alert={selectedAlert}
+        open={isDetailsDialogOpen}
+        onOpenChange={(open) => {
+          setIsDetailsDialogOpen(open);
+          if (!open) setSelectedAlert(null);
+        }}
+      />
     </div>
   );
 }
