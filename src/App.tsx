@@ -5,6 +5,7 @@ import { AppRoutes } from './routes/AppRoutes';
 import { Toaster } from '@/components/ui/toaster';
 import { UserProvider } from './contexts/UserContext';
 import { AlertProvider } from './contexts/AlertContext';
+import { ChatWidget } from './components/chat/ChatWidget';
 import './App.css';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
           <AppLayout>
             <AppRoutes />
           </AppLayout>
+          <ChatWidget />
           <Toaster />
         </AlertProvider>
       </UserProvider>

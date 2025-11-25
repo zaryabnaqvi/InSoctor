@@ -16,6 +16,7 @@ import usersRoutes from './routes/users.routes';
 import fimRoutes from './routes/fim.routes';
 import aiRoutes from './routes/ai.routes';
 import vulnerabilityRoutes from './routes/vulnerability.routes';
+import chatRoutes from './routes/chat.routes';
 
 const app: Application = express();
 
@@ -71,6 +72,7 @@ app.use('/api/agents', agentsRoutes);
 app.use('/api/fim', fimRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/vulnerabilities', vulnerabilityRoutes);
+app.use('/api/chat', chatRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

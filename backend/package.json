@@ -20,6 +20,9 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
+        "@ai-sdk/openai": "^2.0.72",
+        "@modelcontextprotocol/sdk": "^1.23.0",
+        "ai": "^5.0.102",
         "axios": "^1.6.2",
         "bcrypt": "^5.1.1",
         "bcryptjs": "^3.0.3",
@@ -31,7 +34,8 @@
         "jsonwebtoken": "^9.0.2",
         "openai": "^6.9.1",
         "uuid": "^13.0.0",
-        "winston": "^3.11.0"
+        "winston": "^3.11.0",
+        "zod": "^4.1.13"
     },
     "devDependencies": {
         "@types/bcrypt": "^5.0.2",
