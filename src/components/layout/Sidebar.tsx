@@ -146,12 +146,12 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           collapsed ? "justify-center w-full" : ""
         )}>
           {collapsed ? (
-            <div className="flex shrink-0 items-center justify-center h-10 w-10">
+            <div className="flex shrink-0 items-center justify-center h-12 w-12">
               <img src={logoIcon} alt="InSOCtor" className="h-full w-full object-contain" />
             </div>
           ) : (
             <div className="flex items-center">
-              <img src={logoFull} alt="InSOCtor" className="h-10 w-auto object-contain" />
+              <img src={logoFull} alt="InSOCtor" className="h-12 w-auto object-contain" />
             </div>
           )}
         </div>

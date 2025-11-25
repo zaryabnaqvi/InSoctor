@@ -174,51 +174,51 @@ export default function Dashboard() {
 
       {/* Key Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="modern-card border-l-4 border-l-cyan-500 glass-card hover:bg-white/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-slate-400">Total Alerts</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-cyan-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalAlerts}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-white">{stats.totalAlerts}</div>
+            <p className="text-xs text-slate-400">
               {stats.criticalAlerts} critical/high severity
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="modern-card border-l-4 border-l-red-500 glass-card hover:bg-white/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Endpoints</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-slate-400">Endpoints</CardTitle>
+            <Server className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalAgents}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-white">{stats.totalAgents}</div>
+            <p className="text-xs text-slate-400">
               {stats.activeAgents} active agents
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="modern-card border-l-4 border-l-orange-500 glass-card hover:bg-white/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Security Score</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-slate-400">Security Score</CardTitle>
+            <Shield className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{getHealthScore()}%</div>
+            <div className="text-2xl font-bold text-white">{getHealthScore()}%</div>
             <Progress value={getHealthScore()} className="mt-2" />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="modern-card border-l-4 border-l-blue-500 glass-card hover:bg-white/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Agent Health</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-slate-400">Agent Health</CardTitle>
+            <Activity className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.activeAgents}</div>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-2xl font-bold text-white">{stats.activeAgents}</div>
+            <p className="text-xs text-slate-400">
               {stats.totalAgents - stats.activeAgents} disconnected
             </p>
           </CardContent>
@@ -228,7 +228,7 @@ export default function Dashboard() {
       {/* Charts Row */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Alert Severity Distribution */}
-        <Card>
+        <Card className="modern-card glass-card hover:bg-white/5">
           <CardHeader>
             <CardTitle>Alerts by Severity</CardTitle>
             <CardDescription>Distribution of alert severity levels</CardDescription>
@@ -265,7 +265,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Top Alert Rules */}
-        <Card>
+        <Card className="modern-card glass-card hover:bg-white/5">
           <CardHeader>
             <CardTitle>Top Alert Rules</CardTitle>
             <CardDescription>Most frequent detection rules</CardDescription>
@@ -298,7 +298,7 @@ export default function Dashboard() {
       </div>
 
       {/* Alert Activity Timeline */}
-      <Card>
+      <Card className="modern-card glass-card hover:bg-white/5">
         <CardHeader>
           <CardTitle>Alert Activity (Last 24 Hours)</CardTitle>
           <CardDescription>Hourly distribution of alerts</CardDescription>
@@ -347,7 +347,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Recent Critical Alerts */}
-      <Card>
+      <Card className="modern-card glass-card hover:bg-white/5">
         <CardHeader>
           <CardTitle>Recent Critical Alerts</CardTitle>
           <CardDescription>Latest high-priority security events</CardDescription>
