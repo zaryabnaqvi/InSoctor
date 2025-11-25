@@ -292,18 +292,74 @@ Format responses professionally with bullet points, tables, or summaries as appr
                         }))
                     };
 
-                case 'get_alerts':
-                    const alerts = await wazuhService.getAlerts({ limit: args.limit || 100 });
 
-                    // Filter by severity if specified
-                    let filteredAlerts = alerts;
+                case 'get_alerts':
+                    // Parse time range to dates
+                    let startDate: string | undefined;
+                    let endDate: string | undefined;
+
+                    if (args.timeRange) {
+                        const now = new Date();
+                        endDate = now.toISOString();
+
+                        // Parse time range like "24h", "7d", "30d"
+                        const match = args.timeRange.match(/(\d+)([hdwmy])/i);
+                        if (match) {
+                            const value = parseInt(match[1]);
+                            const unit = match[2].toLowerCase();
+
+                            const startTime = new Date(now);
+                            switch (unit) {
+                                case 'h':
+                                    startTime.setHours(startTime.getHours() - value);
+                                    break;
+                                case 'd':
+                                    startTime.setDate(startTime.getDate() - value);
+                                    break;
+                                case 'w':
+                                    startTime.setDate(startTime.getDate() - (value * 7));
+                                    break;
+                                case 'm':
+                                    startTime.setMonth(startTime.getMonth() - value);
+                                    break;
+                                case 'y':
+                                    startTime.setFullYear(startTime.getFullYear() - value);
+                                    break;
+                            }
+                            startDate = startTime.toISOString();
+                        }
+                    }
+
+                    // Build filter object
+                    const alertFilters: any = {
+                        limit: args.limit || 100,
+                        startDate,
+                        endDate
+                    };
+
+                    // Add severity filter if specified
                     if (args.severity) {
-                        filteredAlerts = alerts.filter((a: any) => a.severity === args.severity);
+                        alertFilters.severity = [args.severity];
+                    }
+
+                    console.log('Chat AI calling getAlerts with filters:', JSON.stringify(alertFilters, null, 2));
+
+                    let alerts;
+                    try {
+                        // Use Wazuh Indexer service (not Manager API) for querying alerts
+                        alerts = await wazuhIndexerService.getAlerts(alertFilters);
+                        console.log(`Successfully fetched ${alerts.length} alerts from Wazuh Indexer`);
+                    } catch (err: any) {
+                        console.error('Error fetching alerts from Wazuh Indexer:', err);
+                        return {
+                            error: `Failed to fetch alerts: ${err.message || 'Unknown error'}`,
+                            details: 'There was an issue connecting to Wazuh Indexer or processing the alert query.'
+                        };
                     }
 
                     return {
-                        total: filteredAlerts.length,
-                        alerts: filteredAlerts.slice(0, args.limit || 50).map((a: any) => ({
+                        total: alerts.length,
+                        alerts: alerts.slice(0, args.limit || 50).map((a: any) => ({
                             id: a.id,
                             title: a.title,
                             severity: a.severity,
@@ -314,7 +370,7 @@ Format responses professionally with bullet points, tables, or summaries as appr
                     };
 
                 case 'get_top_endpoints_by_alerts':
-                    const allAlerts = await wazuhService.getAlerts({ limit: 1000 });
+                    const allAlerts = await wazuhIndexerService.getAlerts({ limit: 1000 });
 
                     // Count alerts by agent
                     const agentCounts: Record<string, number> = {};
@@ -349,7 +405,7 @@ Format responses professionally with bullet points, tables, or summaries as appr
 
                 case 'search_security_events':
                     // Simple search across alerts
-                    const searchResults = await wazuhService.getAlerts({ limit: 500 });
+                    const searchResults = await wazuhIndexerService.getAlerts({ limit: 500 });
 
                     const query = args.query.toLowerCase();
                     const matches = searchResults.filter((alert: any) => {
@@ -372,9 +428,16 @@ Format responses professionally with bullet points, tables, or summaries as appr
                 default:
                     return { error: `Unknown function: ${functionName}` };
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(`Error executing function ${functionName}:`, error);
-            return { error: `Failed to execute ${functionName}` };
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                args
+            });
+            return {
+                error: `Failed to execute ${functionName}: ${error.message || 'Unknown error'}`
+            };
         }
     }
 

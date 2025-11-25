@@ -169,7 +169,9 @@ class WazuhIndexerService {
 
         // Severity filter (based on rule level)
         if (filters?.severity && filters.severity.length > 0) {
-            const levels = filters.severity.map(s => this.severityToLevel(s));
+            const levels = filters.severity
+                .map(s => this.severityToLevel(s))
+                .flat(); // Flatten the array of arrays into a single array
             must.push({
                 terms: {
                     'rule.level': levels,
