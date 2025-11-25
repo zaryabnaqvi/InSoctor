@@ -20,6 +20,7 @@ const CaseManagement = lazy(() => import('@/pages/CaseManagement'));
 const Reports = lazy(() => import('@/pages/Reports'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
+const VulnerabilityManagement = lazy(() => import('@/pages/VulnerabilityManagement'));
 
 export function AppRoutes() {
   return (
@@ -108,6 +109,12 @@ export function AppRoutes() {
         <Route path="/settings" element={
           <ProtectedRoute>
             <Settings />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/vulnerability-management" element={
+          <ProtectedRoute>
+            <VulnerabilityManagement />
           </ProtectedRoute>
         } />
 

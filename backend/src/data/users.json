@@ -16,5 +16,14 @@
     "id": "ec397148-b409-42f0-8d34-9064d2106f5c",
     "createdAt": "2025-11-21T19:29:48.500Z",
     "avatar": "https://ui-avatars.com/api/?name=Syed%20rawish&background=random"
+  },
+  {
+    "name": "farkhund",
+    "email": "farkhundabbas@gmail.com",
+    "password": "$2b$10$bWVYA0TeZfx30FPMgN9R6eePIWkRk/bvZrsekbilB7OA1yV5bHlJu",
+    "role": "viewer",
+    "id": "db390dde-c62d-4ea5-adba-465c37f3c99e",
+    "createdAt": "2025-11-24T13:17:15.538Z",
+    "avatar": "https://ui-avatars.com/api/?name=farkhund&background=random"
   }
 ]

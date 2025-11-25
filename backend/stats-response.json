@@ -1,0 +1,1 @@
+﻿{"total":1977,"aggregations":{"by_severity":{"doc_count_error_upper_bound":0,"sum_other_doc_count":0,"buckets":[{"key":"Medium","doc_count":933},{"key":"","doc_count":597},{"key":"High","doc_count":338},{"key":"Low","doc_count":104},{"key":"Critical","doc_count":5}]},"avg_cvss":{"value":4.03358626510377}}}

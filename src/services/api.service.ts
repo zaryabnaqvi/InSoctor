@@ -253,6 +253,35 @@ class ApiClient {
         return response.data;
     }
 
+    // ==================== Generic HTTP Methods ====================
+    /**
+     * Generic GET request
+     */
+    get(url: string, config?: any) {
+        return this.client.get(url, config);
+    }
+
+    /**
+     * Generic POST request
+     */
+    post(url: string, data?: any, config?: any) {
+        return this.client.post(url, data, config);
+    }
+
+    /**
+     * Generic PUT request
+     */
+    put(url: string, data?: any, config?: any) {
+        return this.client.put(url, data, config);
+    }
+
+    /**
+     * Generic DELETE request
+     */
+    delete(url: string, config?: any) {
+        return this.client.delete(url, config);
+    }
+
     // ==================== FIM Methods ====================
     /**
      * Get FIM (File Integrity Monitoring) alerts

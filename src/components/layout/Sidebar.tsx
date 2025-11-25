@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
-  Shield,
   AlertCircle,
   Terminal,
   BarChart3,
@@ -20,6 +19,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAlerts } from '@/contexts/AlertContext';
 import { useUser } from '@/contexts/UserContext';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import logoIcon from '@/assets/logo-icon.jpg';
+import logoFull from '@/assets/logo-full.jpg';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -144,17 +145,15 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           "flex items-center transition-all overflow-hidden",
           collapsed ? "justify-center w-full" : ""
         )}>
-          <div className="flex shrink-0 items-center justify-center h-9 w-9 rounded-lg bg-primary mr-2">
-            <Shield className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span
-            className={cn(
-              "font-semibold text-lg transition-opacity",
-              collapsed ? "opacity-0 w-0" : "opacity-100"
-            )}
-          >
-            InSOCtor
-          </span>
+          {collapsed ? (
+            <div className="flex shrink-0 items-center justify-center h-10 w-10">
+              <img src={logoIcon} alt="InSOCtor" className="h-full w-full object-contain" />
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <img src={logoFull} alt="InSOCtor" className="h-10 w-auto object-contain" />
+            </div>
+          )}
         </div>
         <button
           onClick={onToggleCollapse}

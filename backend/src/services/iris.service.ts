@@ -3,6 +3,7 @@ import https from 'https';
 import config from '@/config';
 import logger from '@/config/logger';
 import { IrisCase, Case, CaseFilters } from '@/types';
+import { v4 as uuidv4 } from 'uuid';
 
 export class IrisService {
     private client: AxiosInstance;
@@ -179,6 +180,7 @@ export class IrisService {
                 case_sev_id: this.severityToId(data.severity),
                 case_customer: data.customer || 1, // Default customer
                 case_classification: data.classification || 'security-incident',
+                case_soc_id: uuidv4(),
                 case_tags: data.alertIds ? data.alertIds.join(',') : '',
                 cid: data.customer || 1
             };

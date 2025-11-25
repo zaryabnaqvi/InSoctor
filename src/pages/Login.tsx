@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Shield, Lock, Mail, Loader2 } from 'lucide-react';
+import { Lock, Mail, Loader2, ArrowRight } from 'lucide-react';
+import logoFull from '@/assets/logo-full.jpg';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -35,76 +36,157 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] p-4">
-            <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+        <div className="min-h-screen flex items-center justify-center bg-[#0a0f1e] p-4 relative overflow-hidden">
+            {/* Animated Background */}
+            <div className="absolute inset-0 bg-gradient-mesh opacity-60"></div>
+            <div className="absolute inset-0">
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-glow-pulse"></div>
+                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-glow-pulse" style={{ animationDelay: '1s' }}></div>
+            </div>
 
-            <Card className="w-full max-w-md relative z-10 border-white/10 bg-[#1a1a1a]/90 backdrop-blur-sm">
-                <CardHeader className="space-y-1 flex flex-col items-center text-center">
-                    <div className="h-12 w-12 bg-blue-600 rounded-lg flex items-center justify-center mb-4">
-                        <Shield className="h-8 w-8 text-white" />
-                    </div>
-                    <CardTitle className="text-2xl font-bold text-white">Welcome back</CardTitle>
-                    <CardDescription className="text-gray-400">
-                        Enter your credentials to access the dashboard
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="email" className="text-gray-300">Email</Label>
+            {/* Glassmorphism Login Card */}
+            <Card className="w-full max-w-md relative z-10 glass-card border-white/10 overflow-hidden animate-fade-in-scale">
+                {/* Glow Effect on Top */}
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+
+                <div className="p-8 space-y-8">
+                    {/* Logo Section */}
+                    <div className="text-center space-y-6">
+                        <div className="inline-block animate-float-in">
                             <div className="relative">
-                                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                                <div className="absolute inset-0 bg-cyan-500/20 blur-2xl rounded-full"></div>
+                                <img
+                                    src={logoFull}
+                                    alt="InSOCtor Logo"
+                                    className="h-16 w-auto object-contain relative z-10 hover-scale"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                            <h1 className="text-3xl font-bold text-white tracking-tight">
+                                Welcome Back
+                            </h1>
+                            <p className="text-slate-400 text-sm">
+                                Sign in to access your security dashboard
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Login Form */}
+                    <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                        {/* Email Field */}
+                        <div className="space-y-2">
+                            <Label htmlFor="email" className="text-slate-300 text-sm font-medium">
+                                Email Address
+                            </Label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-cyan-400 transition-colors" />
+                                </div>
                                 <Input
                                     id="email"
                                     type="email"
                                     placeholder="name@example.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500"
+                                    className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-slate-500 
+                                             focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 
+                                             transition-all duration-300 rounded-xl hover:bg-white/10"
                                     required
                                 />
                             </div>
                         </div>
+
+                        {/* Password Field */}
                         <div className="space-y-2">
-                            <Label htmlFor="password" className="text-gray-300">Password</Label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="password" className="text-slate-300 text-sm font-medium">
+                                    Password
+                                </Label>
+                                <button
+                                    type="button"
+                                    className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                                >
+                                    Forgot password?
+                                </button>
+                            </div>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-cyan-400 transition-colors" />
+                                </div>
                                 <Input
                                     id="password"
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-blue-500"
+                                    className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-slate-500 
+                                             focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 
+                                             transition-all duration-300 rounded-xl hover:bg-white/10"
                                     required
                                 />
                             </div>
                         </div>
+
+                        {/* Error Message */}
                         {error && (
-                            <div className="text-red-400 text-sm text-center bg-red-500/10 p-2 rounded border border-red-500/20">
-                                {error}
+                            <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 animate-fade-in-scale">
+                                <p className="text-red-400 text-sm text-center font-medium">
+                                    {error}
+                                </p>
                             </div>
                         )}
+
+                        {/* Submit Button */}
                         <Button
                             type="submit"
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                             disabled={isLoading}
+                            className="w-full h-12 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 
+                                     text-white font-medium rounded-xl shadow-soft-lg hover:shadow-glow
+                                     transition-all duration-300 group relative overflow-hidden"
                         >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Signing in...
-                                </>
-                            ) : (
-                                'Sign in'
-                            )}
+                            {/* Button Shimmer Effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
+                                          translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
+
+                            <span className="relative flex items-center justify-center gap-2">
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <span>Signing in...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>Sign In</span>
+                                        <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                                    </>
+                                )}
+                            </span>
                         </Button>
+
+                        {/* Divider */}
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-white/10"></div>
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-[#0a0f1e] px-4 text-slate-500">
+                                    Secure Access
+                                </span>
+                            </div>
+                        </div>
                     </form>
-                </CardContent>
-                <CardFooter className="flex justify-center">
-                    <p className="text-xs text-gray-500">
-                        Protected by INSOCtor Security System
-                    </p>
-                </CardFooter>
+
+                    {/* Footer */}
+                    <div className="text-center space-y-2 pt-4">
+                        <p className="text-xs text-slate-500 flex items-center justify-center gap-2">
+                            <Lock className="h-3 w-3" />
+                            <span>Protected by InSOCtor Security System</span>
+                        </p>
+                    </div>
+                </div>
+
+                {/* Bottom Glow Effect */}
+                <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
             </Card>
         </div>
     );

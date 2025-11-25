@@ -507,6 +507,274 @@ class WazuhIndexerService {
             severity: this.levelToSeverity(source.rule?.level || 0)
         };
     }
+
+    /**
+     * Get vulnerabilities from Wazuh Indexer
+     */
+    async getVulnerabilities(filters?: any): Promise<any> {
+        try {
+            const query = this.buildVulnerabilitiesQuery(filters);
+
+            logger.debug('Querying Wazuh Indexer for vulnerabilities', { query });
+
+            const response = await this.client.post('/wazuh-states-vulnerabilities-*/_search', query);
+
+            const hits = response.data?.hits?.hits || [];
+            const vulnerabilities = hits.map((hit: any) => this.transformVulnerability(hit._source));
+
+            logger.info(`Retrieved ${vulnerabilities.length} vulnerabilities from Wazuh Indexer`);
+
+            return {
+                vulnerabilities,
+                total: response.data?.hits?.total?.value || 0,
+                aggregations: response.data?.aggregations || {}
+            };
+        } catch (error: any) {
+            logger.error('Failed to query vulnerabilities from Wazuh Indexer', {
+                error: error.message,
+                response: error.response?.data,
+            });
+            throw new Error(`Failed to fetch vulnerabilities: ${error.message}`);
+        }
+    }
+
+    /**
+     * Get vulnerability statistics
+     */
+    async getVulnerabilityStats(): Promise<any> {
+        try {
+            const query = {
+                size: 0,
+                aggs: {
+                    by_severity: {
+                        terms: {
+                            field: 'vulnerability.severity',
+                            size: 10
+                        }
+                    },
+                    avg_cvss: {
+                        avg: {
+                            field: 'vulnerability.score.base'
+                        }
+                    }
+                }
+            };
+
+            const response = await this.client.post('/wazuh-states-vulnerabilities-*/_search', query);
+
+            return {
+                total: response.data?.hits?.total?.value || 0,
+                aggregations: response.data?.aggregations || {}
+            };
+        } catch (error: any) {
+            logger.error('Failed to get vulnerability stats from Wazuh Indexer', {
+                error: error.message,
+                response: error.response?.data
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Get vulnerability trends
+     */
+    async getVulnerabilityTrends(days: number = 30): Promise<any> {
+        try {
+            const query = {
+                size: 0,
+                query: {
+                    range: {
+                        'vulnerability.detected_at': {
+                            gte: `now-${days}d/d`,
+                            lte: 'now/d'
+                        }
+                    }
+                },
+                aggs: {
+                    trends: {
+                        date_histogram: {
+                            field: 'vulnerability.detected_at',
+                            calendar_interval: 'day',
+                            format: 'yyyy-MM-dd',
+                            min_doc_count: 0,
+                            extended_bounds: {
+                                min: `now-${days}d/d`,
+                                max: 'now/d'
+                            }
+                        },
+                        aggs: {
+                            by_severity: {
+                                terms: {
+                                    field: 'vulnerability.severity'
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            const response = await this.client.post('/wazuh-states-vulnerabilities-*/_search', query);
+
+            return {
+                trends: response.data?.aggregations?.trends?.buckets || []
+            };
+        } catch (error: any) {
+            logger.error('Failed to get vulnerability trends', {
+                error: error.message,
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Get affected packages
+     */
+    async getAffectedPackages(limit: number = 20): Promise<any> {
+        try {
+            const query = {
+                size: 0,
+                aggs: {
+                    packages: {
+                        terms: {
+                            field: 'package.name',
+                            size: limit,
+                            order: { _count: 'desc' }
+                        }
+                    }
+                }
+            };
+
+            const response = await this.client.post('/wazuh-states-vulnerabilities-*/_search', query);
+
+            return {
+                packages: response.data?.aggregations?.packages?.buckets || []
+            };
+        } catch (error: any) {
+            logger.error('Failed to get affected packages', {
+                error: error.message,
+                response: error.response?.data
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Build Elasticsearch query for vulnerabilities
+     */
+    private buildVulnerabilitiesQuery(filters?: any): any {
+        const must: any[] = [];
+
+        // Severity filter
+        if (filters?.severity && filters.severity.length > 0) {
+            must.push({
+                terms: {
+                    'vulnerability.severity': filters.severity.map((s: string) => s.charAt(0).toUpperCase() + s.slice(1))
+                }
+            });
+        }
+
+        // CVE ID filter
+        if (filters?.cve) {
+            must.push({
+                match: {
+                    'vulnerability.reference': filters.cve
+                }
+            });
+        }
+
+        // Package name filter
+        if (filters?.package) {
+            must.push({
+                wildcard: {
+                    'package.name': `*${filters.package}*`
+                }
+            });
+        }
+
+        // Agent filter
+        if (filters?.agentId) {
+            must.push({
+                term: {
+                    'agent.id': filters.agentId
+                }
+            });
+        }
+
+        // Status filter
+        if (filters?.status) {
+            must.push({
+                term: {
+                    'vulnerability.status': filters.status
+                }
+            });
+        }
+
+        // Date range filter
+        if (filters?.startDate || filters?.endDate) {
+            const range: any = {};
+            if (filters.startDate) range.gte = filters.startDate;
+            if (filters.endDate) range.lte = filters.endDate;
+
+            must.push({
+                range: {
+                    'vulnerability.detected_at': range
+                }
+            });
+        }
+
+        return {
+            size: filters?.limit || 100,
+            from: filters?.offset || 0,
+            sort: [
+                {
+                    'vulnerability.score.base': { order: 'desc', missing: '_last' }
+                },
+                {
+                    'vulnerability.detected_at': { order: 'desc' }
+                }
+            ],
+            query: {
+                bool: {
+                    must: must.length > 0 ? must : [{ match_all: {} }]
+                }
+            }
+        };
+    }
+
+    /**
+     * Transform vulnerability from Wazuh Indexer format
+     */
+    private transformVulnerability(source: any): any {
+        const cvssScore = source.vulnerability?.score?.base || 0;
+        const severity = source.vulnerability?.severity?.toLowerCase() || 'low';
+
+        return {
+            id: source._id || `${source.agent?.id}-${source.vulnerability?.reference}`,
+            cve: source.vulnerability?.reference || 'N/A',
+            title: source.vulnerability?.title || source.vulnerability?.reference || 'Unknown Vulnerability',
+            description: source.vulnerability?.description || '',
+            severity,
+            cvssScore,
+            cvss2: null,
+            cvss3: { base_score: cvssScore, version: source.vulnerability?.score?.version },
+            package: {
+                name: source.package?.name || '',
+                version: source.package?.version || '',
+                architecture: source.package?.architecture || ''
+            },
+            status: source.vulnerability?.status || 'PENDING',
+            detectedAt: source.vulnerability?.detected_at || source['@timestamp'],
+            publishedAt: source.vulnerability?.published || '',
+            updatedAt: source.vulnerability?.updated || '',
+            references: source.vulnerability?.references || [],
+            agent: {
+                id: source.agent?.id || '',
+                name: source.agent?.name || ''
+            },
+            condition: source.vulnerability?.condition || '',
+            external_references: source.vulnerability?.external_references || []
+        };
+    }
 }
 
 export default new WazuhIndexerService();
