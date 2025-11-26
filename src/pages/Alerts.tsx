@@ -15,7 +15,7 @@ import AlertsInsights from '@/components/alerts-insight';
 import { AlertDetailsDialog } from '@/components/dialogs/AlertDetailsDialog';
 
 export function Alerts() {
-  const { filteredAlerts, updateAlert, filterBySeverity, filterByStatus, clearFilters, activeFilters } = useAlerts();
+  const { filteredAlerts, updateAlert, filterBySeverity, filterByStatus, clearFilters, activeFilters, timeRange, setTimeRange } = useAlerts();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -132,6 +132,23 @@ export function Alerts() {
             </div>
 
             <div className="flex space-x-2">
+              <div>
+                <Select value={timeRange} onValueChange={setTimeRange}>
+                  <SelectTrigger className="w-[130px]">
+                    <Clock className="h-4 w-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15m">Last 15 min</SelectItem>
+                    <SelectItem value="30m">Last 30 min</SelectItem>
+                    <SelectItem value="1h">Last 1 hour</SelectItem>
+                    <SelectItem value="24h">Last 24 hours</SelectItem>
+                    <SelectItem value="7d">Last 7 days</SelectItem>
+                    <SelectItem value="30d">Last 30 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div>
                 <Select onValueChange={handleSeverityFilterChange}>
                   <SelectTrigger className="w-[130px]">
