@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ChatMessage } from './chat.types';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import axios from 'axios';
 
 const SUGGESTED_QUESTIONS = [
@@ -88,7 +89,6 @@ export function ChatWidget() {
 
     return (
         <div className="fixed bottom-6 left-6 z-50 flex flex-col items-start gap-4">
-            {/* Chat Window */}
             {/* Chat Window */}
             {isOpen && (
                 <div className={cn(
@@ -173,8 +173,8 @@ export function ChatWidget() {
                                 <div
                                     key={msg.id}
                                     className={cn(
-                                        "flex gap-3 max-w-[85%]",
-                                        msg.role === 'user' ? "self-end flex-row-reverse" : "self-start"
+                                        "flex gap-3",
+                                        msg.role === 'user' ? "self-end flex-row-reverse max-w-[85%]" : "self-start w-full"
                                     )}
                                 >
                                     <div className={cn(
@@ -188,17 +188,50 @@ export function ChatWidget() {
 
                                     <div className={cn(
                                         "flex flex-col gap-1",
-                                        msg.role === 'user' ? "items-end" : "items-start"
+                                        msg.role === 'user' ? "items-end max-w-[85%]" : "items-start flex-1"
                                     )}>
                                         <div className={cn(
                                             "p-3 rounded-2xl text-sm leading-relaxed",
                                             msg.role === 'user'
-                                                ? "bg-cyan-500 text-white rounded-tr-none"
-                                                : "bg-slate-800 border border-white/10 text-slate-200 rounded-tl-none"
+                                                ? "bg-cyan-500 text-white rounded-tr-none max-w-full"
+                                                : "bg-slate-800 border border-white/10 text-slate-200 rounded-tl-none w-full"
                                         )}>
                                             {msg.role === 'assistant' ? (
-                                                <div className="prose prose-invert prose-sm max-w-none">
-                                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                                <div className="markdown-content w-full overflow-x-auto">
+                                                    <ReactMarkdown
+                                                        remarkPlugins={[remarkGfm]}
+                                                        components={{
+                                                            table: ({ node, ...props }) => (
+                                                                <table className="w-full border-collapse my-4 text-sm" {...props} />
+                                                            ),
+                                                            thead: ({ node, ...props }) => (
+                                                                <thead className="bg-slate-900/50" {...props} />
+                                                            ),
+                                                            th: ({ node, ...props }) => (
+                                                                <th className="border border-cyan-500/30 px-3 py-2 text-left text-cyan-400 font-semibold" {...props} />
+                                                            ),
+                                                            td: ({ node, ...props }) => (
+                                                                <td className="border border-white/10 px-3 py-2" {...props} />
+                                                            ),
+                                                            tr: ({ node, ...props }) => (
+                                                                <tr className="hover:bg-white/5" {...props} />
+                                                            ),
+                                                            p: ({ node, ...props }) => (
+                                                                <p className="my-2" {...props} />
+                                                            ),
+                                                            strong: ({ node, ...props }) => (
+                                                                <strong className="text-cyan-400 font-semibold" {...props} />
+                                                            ),
+                                                            code: ({ node, inline, ...props }: any) =>
+                                                                inline ? (
+                                                                    <code className="bg-slate-900/50 px-1 py-0.5 rounded text-cyan-400" {...props} />
+                                                                ) : (
+                                                                    <code className="block bg-slate-900/50 p-3 rounded border border-white/10 my-2" {...props} />
+                                                                )
+                                                        }}
+                                                    >
+                                                        {msg.content}
+                                                    </ReactMarkdown>
                                                 </div>
                                             ) : (
                                                 msg.content
