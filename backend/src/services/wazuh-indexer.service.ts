@@ -265,7 +265,7 @@ class WazuhIndexerService {
         }
 
         return {
-            size: filters?.limit || 100,
+            size: filters?.limit || 10000,
             from: filters?.offset || 0,
             sort: [{ timestamp: { order: 'desc' } }],
             query: {
@@ -378,7 +378,7 @@ class WazuhIndexerService {
      * Build Elasticsearch query for FIM alerts
      */
     private buildFimQuery(filters?: any) {
-        const limit = filters?.limit || 100;
+        const limit = filters?.limit || 10000;
         const startDate = filters?.startDate || 'now-24h';
         const endDate = filters?.endDate || 'now';
 
@@ -725,7 +725,7 @@ class WazuhIndexerService {
         }
 
         return {
-            size: filters?.limit || 100,
+            size: filters?.limit || 10000,
             from: filters?.offset || 0,
             sort: [
                 {

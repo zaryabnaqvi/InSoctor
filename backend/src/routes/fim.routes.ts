@@ -11,7 +11,7 @@ const router = Router();
 router.get('/alerts', async (req: Request, res: Response) => {
     try {
         const filters = {
-            limit: req.query.limit ? parseInt(req.query.limit as string) : 100,
+            limit: req.query.limit ? parseInt(req.query.limit as string) : 10000,
             startDate: req.query.startDate as string,
             endDate: req.query.endDate as string,
             action: req.query.action as string,
