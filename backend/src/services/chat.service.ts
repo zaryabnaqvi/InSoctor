@@ -90,6 +90,8 @@ Format responses professionally with bullet points, tables, or summaries as appr
             });
 
             const responseMessage = response.choices[0].message;
+            let finalReply = responseMessage.content;
+            let reportData = null;
 
             // Handle tool calls
             if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
@@ -106,13 +108,18 @@ Format responses professionally with bullet points, tables, or summaries as appr
                     toolsUsed.push(functionName);
 
                     // Execute the function
-                    const functionResponse = await this.executeFunction(functionName, functionArgs);
+                    const functionResult = await this.executeFunction(functionName, functionArgs);
+
+                    // If this was a report generation, capture the data
+                    if (functionName === 'generate_report') {
+                        reportData = functionResult;
+                    }
 
                     // Add function response to messages
                     messages.push({
                         role: 'tool',
                         tool_call_id: toolCall.id,
-                        content: JSON.stringify(functionResponse),
+                        content: JSON.stringify(functionResult),
                     } as any);
                 }
 
@@ -122,31 +129,23 @@ Format responses professionally with bullet points, tables, or summaries as appr
                     messages: messages as any,
                 });
 
-                const finalMessage = finalResponse.choices[0].message.content || 'I processed your request but encountered an issue generating a response.';
-                messages.push({ role: 'assistant', content: finalMessage });
-
-                // Save conversation
-                this.conversations.set(convId, messages);
-
-                return {
-                    reply: finalMessage,
-                    conversationId: convId,
-                    toolsUsed
-                };
-            } else {
-                // No tool calls, just return the response
-                const reply = responseMessage.content || 'I apologize, but I could not generate a response.';
-                messages.push({ role: 'assistant', content: reply });
-
-                // Save conversation
-                this.conversations.set(convId, messages);
-
-                return {
-                    reply,
-                    conversationId: convId,
-                    toolsUsed
-                };
+                finalReply = finalResponse.choices[0].message.content || 'I processed your request but encountered an issue generating a response.';
             }
+
+            // Add final assistant message to history
+            if (finalReply) {
+                messages.push({ role: 'assistant', content: finalReply });
+            }
+
+            // Save conversation
+            this.conversations.set(convId, messages);
+
+            return {
+                reply: finalReply || 'I apologize, but I could not generate a response.',
+                conversationId: convId,
+                toolsUsed,
+                reportData // Return the report data to frontend
+            };
         } catch (error) {
             console.error('Chat service error:', error);
             throw new Error('Failed to process chat message');
@@ -254,6 +253,27 @@ Format responses professionally with bullet points, tables, or summaries as appr
                             }
                         },
                         required: ['query']
+                    }
+                }
+            },
+            {
+                type: 'function' as const,
+                function: {
+                    name: 'generate_report',
+                    description: 'Generate a comprehensive security report with metrics and trends',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            timeRange: {
+                                type: 'string',
+                                description: 'Time range for the report (e.g., "7d", "30d")'
+                            },
+                            title: {
+                                type: 'string',
+                                description: 'Custom title for the report'
+                            }
+                        },
+                        required: ['timeRange']
                     }
                 }
             }
@@ -423,6 +443,78 @@ Format responses professionally with bullet points, tables, or summaries as appr
                             timestamp: a.timestamp,
                             agent: a.source
                         }))
+                    };
+
+                case 'generate_report':
+                    // 1. Parse time range
+                    let reportStartDate: string | undefined;
+                    const reportEndDate = new Date().toISOString();
+
+                    if (args.timeRange) {
+                        const now = new Date();
+                        const match = args.timeRange.match(/(\d+)([hdwmy])/i);
+                        if (match) {
+                            const value = parseInt(match[1]);
+                            const unit = match[2].toLowerCase();
+                            const startTime = new Date(now);
+
+                            switch (unit) {
+                                case 'h': startTime.setHours(startTime.getHours() - value); break;
+                                case 'd': startTime.setDate(startTime.getDate() - value); break;
+                                case 'w': startTime.setDate(startTime.getDate() - (value * 7)); break;
+                                case 'm': startTime.setMonth(startTime.getMonth() - value); break;
+                                case 'y': startTime.setFullYear(startTime.getFullYear() - value); break;
+                            }
+                            reportStartDate = startTime.toISOString();
+                        }
+                    }
+
+                    // 2. Fetch all alerts for the period
+                    const reportAlerts = await wazuhIndexerService.getAlerts({
+                        startDate: reportStartDate,
+                        endDate: reportEndDate,
+                        limit: 1000 // Limit for analysis
+                    });
+
+                    // 3. Calculate Statistics
+                    const severityCounts: Record<string, number> = {
+                        critical: 0, high: 0, medium: 0, low: 0, info: 0
+                    };
+
+                    const agentActivity: Record<string, number> = {};
+                    const dailyTrend: Record<string, number> = {};
+
+                    reportAlerts.forEach((alert: any) => {
+                        // Severity
+                        if (alert.severity) severityCounts[alert.severity] = (severityCounts[alert.severity] || 0) + 1;
+
+                        // Agent
+                        const agent = alert.source?.replace('Agent: ', '') || 'Unknown';
+                        agentActivity[agent] = (agentActivity[agent] || 0) + 1;
+
+                        // Daily Trend
+                        const date = alert.timestamp.split('T')[0];
+                        dailyTrend[date] = (dailyTrend[date] || 0) + 1;
+                    });
+
+                    // 4. Format Data for Report
+                    return {
+                        reportType: 'security_summary',
+                        title: args.title || `Security Report (${args.timeRange})`,
+                        generatedAt: new Date().toISOString(),
+                        timeRange: args.timeRange,
+                        metrics: {
+                            totalAlerts: reportAlerts.length,
+                            severityDistribution: Object.entries(severityCounts).map(([name, value]) => ({ name, value })),
+                            topAgents: Object.entries(agentActivity)
+                                .map(([name, value]) => ({ name, value }))
+                                .sort((a, b) => b.value - a.value)
+                                .slice(0, 5),
+                            alertTrend: Object.entries(dailyTrend)
+                                .map(([date, count]) => ({ date, count }))
+                                .sort((a, b) => a.date.localeCompare(b.date))
+                        },
+                        summary: `Generated report for ${args.timeRange}. Found ${reportAlerts.length} total alerts.`
                     };
 
                 default:
