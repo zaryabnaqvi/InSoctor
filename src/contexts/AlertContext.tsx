@@ -35,6 +35,8 @@ type AlertContextType = {
     severities: AlertSeverity[];
     statuses: string[];
   };
+  timeRange: string;
+  setTimeRange: (range: string) => void;
 };
 
 const AlertContext = createContext<AlertContextType | undefined>(undefined);
@@ -49,13 +51,38 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
     severities: [] as AlertSeverity[],
     statuses: [] as string[],
   });
+  const [timeRange, setTimeRange] = useState<string>('24h');
 
   const previousAlertsRef = useRef<Alert[]>([]);
   const hasShownErrorRef = useRef(false);
 
   const fetchAlerts = useCallback(async () => {
     try {
-      const response = await apiClient.getAlerts({ limit: 500 });
+      // Calculate start date based on timeRange
+      const now = new Date();
+      let startDate: Date;
+
+      const value = parseInt(timeRange.slice(0, -1));
+      const unit = timeRange.slice(-1);
+
+      switch (unit) {
+        case 'm':
+          startDate = new Date(now.getTime() - value * 60 * 1000);
+          break;
+        case 'h':
+          startDate = new Date(now.getTime() - value * 60 * 60 * 1000);
+          break;
+        case 'd':
+          startDate = new Date(now.getTime() - value * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); // Default 24h
+      }
+
+      const response = await apiClient.getAlerts({
+        limit: 1000,
+        startDate: startDate.toISOString()
+      });
 
       if (response.success && response.data) {
         const newAlerts: Alert[] = response.data;
@@ -99,7 +126,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [timeRange]); // Re-fetch when timeRange changes
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -107,14 +134,14 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
   }, [fetchAlerts]);
 
   useEffect(() => {
-    // Initial fetch ONLY - No auto-polling!
-    // User must click refresh button to update
+    // Fetch when timeRange changes
     fetchAlerts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [timeRange]);
 
   useEffect(() => {
     applyFilters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alerts, activeFilters]);
 
   const applyFilters = () => {
@@ -189,7 +216,9 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
         filterByStatus,
         clearFilters,
         refresh,
-        activeFilters
+        activeFilters,
+        timeRange,
+        setTimeRange
       }}
     >
       {children}
