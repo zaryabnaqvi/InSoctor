@@ -80,7 +80,6 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
       }
 
       const response = await apiClient.getAlerts({
-        limit: 1000,
         startDate: startDate.toISOString()
       });
 

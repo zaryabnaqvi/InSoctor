@@ -198,7 +198,7 @@ class WazuhIndexerService {
         }
 
         return {
-            size: filters?.limit || 500,
+            size: filters?.limit || 10000,
             from: filters?.offset || 0,
             sort: [{ timestamp: { order: 'desc' } }],
             query: {
