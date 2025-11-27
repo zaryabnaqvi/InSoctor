@@ -259,6 +259,27 @@ Format responses professionally with bullet points, tables, or summaries as appr
             {
                 type: 'function' as const,
                 function: {
+                    name: 'block_ip_on_agent',
+                    description: 'Block a malicious IP address on a specific agent using Active Response',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            agentId: {
+                                type: 'string',
+                                description: 'The ID of the agent where the IP should be blocked (e.g., "001")'
+                            },
+                            ip: {
+                                type: 'string',
+                                description: 'The IP address to block'
+                            }
+                        },
+                        required: ['agentId', 'ip']
+                    }
+                }
+            },
+            {
+                type: 'function' as const,
+                function: {
                     name: 'generate_report',
                     description: 'Generate a comprehensive security report with metrics and trends',
                     parameters: {
@@ -444,6 +465,21 @@ Format responses professionally with bullet points, tables, or summaries as appr
                             agent: a.source
                         }))
                     };
+
+                case 'block_ip_on_agent':
+                    try {
+                        const result = await wazuhService.blockIp(args.agentId, args.ip);
+                        return {
+                            success: true,
+                            message: `Successfully triggered block for IP ${args.ip} on agent ${args.agentId}`,
+                            details: result
+                        };
+                    } catch (error: any) {
+                        return {
+                            success: false,
+                            error: `Failed to block IP: ${error.message}`
+                        };
+                    }
 
                 case 'generate_report':
                     // 1. Parse time range

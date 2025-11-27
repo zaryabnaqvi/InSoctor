@@ -439,6 +439,23 @@ export class WazuhService {
             throw error;
         }
     }
+
+    /**
+     * Trigger Active Response to block an IP on an agent
+     */
+    async blockIp(agentId: string, ip: string): Promise<any> {
+        try {
+            logger.info(`Blocking IP ${ip} on agent ${agentId}`);
+            return await this.request('PUT', '/active-response', {
+                command: 'firewall-drop',
+                arguments: [ip],
+                agents_list: [agentId]
+            });
+        } catch (error: any) {
+            logger.error(`Failed to block IP ${ip} on agent ${agentId}`, error);
+            throw error;
+        }
+    }
 }
 
 export default new WazuhService();
