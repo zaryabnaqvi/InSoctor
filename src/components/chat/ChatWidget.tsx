@@ -326,27 +326,23 @@ export function ChatWidget() {
                     </div>
                 )}
 
-                {/* Toggle Button with Pulsing Effect */}
+                {/* Toggle Button */}
                 <Button
                     onClick={() => setIsOpen(!isOpen)}
                     className={cn(
                         "h-16 w-16 rounded-2xl shadow-2xl transition-all duration-300 transform hover:scale-110 relative overflow-hidden group",
                         isOpen
                             ? "bg-slate-800 hover:bg-slate-700 text-white border-2 border-cyan-400/30 shadow-cyan-500/20"
-                            : "bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-cyan-500/50 hover:shadow-cyan-500/80 animate-pulse"
+                            : "bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-cyan-500/50 hover:shadow-cyan-500/80"
                     )}
                 >
                     <div className={cn(
-                        "absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
-                        !isOpen && "animate-pulse"
+                        "absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-blue-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                     )} />
                     {isOpen ? (
                         <X className="w-7 h-7 relative z-10" />
                     ) : (
                         <MessageSquare className="w-7 h-7 relative z-10" />
-                    )}
-                    {!isOpen && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full animate-ping" />
                     )}
                 </Button>
             </div>

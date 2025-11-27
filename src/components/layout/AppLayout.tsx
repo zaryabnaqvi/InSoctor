@@ -3,6 +3,7 @@ import { useUser } from '@/contexts/UserContext';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { cn } from '@/lib/utils';
+import { ChatWidget } from '../chat/ChatWidget';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isLoggedIn } = useUser();
@@ -15,9 +16,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-background text-foreground">
-      <Sidebar 
-        collapsed={sidebarCollapsed} 
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} 
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       <div className={cn(
         "flex flex-col flex-grow transition-all duration-300",
@@ -28,6 +29,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      <ChatWidget />
     </div>
   );
 }

@@ -44,6 +44,18 @@ interface Log {
   data: any;
 }
 
+const flattenObject = (obj: any, prefix = ''): Record<string, any> => {
+  return Object.keys(obj || {}).reduce((acc: any, k) => {
+    const pre = prefix.length ? prefix + '.' : '';
+    if (typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k])) {
+      Object.assign(acc, flattenObject(obj[k], pre + k));
+    } else {
+      acc[pre + k] = obj[k];
+    }
+    return acc;
+  }, {});
+};
+
 export default function Logs() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<Log[]>([]);
@@ -386,65 +398,52 @@ export default function Logs() {
                       {/* Expanded Log Details */}
                       {selectedLog?.id === log.id && (
                         <TableRow>
-                          <TableCell colSpan={6} className="bg-muted/30">
-                            <div className="p-4 space-y-4">
+                          <TableCell colSpan={6} className="bg-muted/30 p-0">
+                            <div className="p-4 space-y-6">
+                              {/* Parsed Fields Table */}
+                              <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+                                <div className="px-4 py-3 border-b bg-muted/40">
+                                  <h4 className="font-semibold text-sm">Event Fields</h4>
+                                </div>
+                                <div className="max-h-[500px] overflow-y-auto">
+                                  <Table>
+                                    <TableBody>
+                                      {Object.entries(flattenObject({
+                                        timestamp: log.timestamp,
+                                        agent: { id: log.agentId, name: log.agentName },
+                                        rule: { id: log.ruleId, description: log.ruleDescription, level: log.level },
+                                        decoder: log.decoder,
+                                        ...log.data
+                                      })).map(([key, value]) => (
+                                        <TableRow key={key} className="hover:bg-muted/50">
+                                          <TableCell className="font-medium text-xs w-1/3 text-muted-foreground py-2">{key}</TableCell>
+                                          <TableCell className="font-mono text-xs break-all py-2 text-foreground">
+                                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+
+                              {/* Raw Log */}
                               <div>
-                                <h4 className="font-semibold mb-2">Full Log</h4>
-                                <pre className="bg-slate-900 p-4 rounded-lg text-sm overflow-x-auto">
+                                <h4 className="font-semibold text-sm mb-2">Raw Log</h4>
+                                <pre className="bg-slate-950 p-4 rounded-lg text-xs font-mono overflow-x-auto text-slate-300 border border-slate-800">
                                   {log.fullLog}
                                 </pre>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <h4 className="font-semibold mb-2">Log Details</h4>
-                                  <dl className="space-y-1 text-sm">
-                                    <div className="flex">
-                                      <dt className="font-medium w-32">Timestamp:</dt>
-                                      <dd className="text-muted-foreground">
-                                        {new Date(log.timestamp).toLocaleString()}
-                                      </dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="font-medium w-32">Agent Name:</dt>
-                                      <dd className="text-muted-foreground">{log.agentName}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="font-medium w-32">Agent ID:</dt>
-                                      <dd className="text-muted-foreground">{log.agentId}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="font-medium w-32">Decoder:</dt>
-                                      <dd className="text-muted-foreground">{log.decoder}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="font-medium w-32">Rule ID:</dt>
-                                      <dd className="text-muted-foreground">{log.ruleId}</dd>
-                                    </div>
-                                    <div className="flex">
-                                      <dt className="font-medium w-32">Level:</dt>
-                                      <dd className="text-muted-foreground">{log.level}</dd>
-                                    </div>
-                                  </dl>
-                                </div>
-
-                                {log.data && Object.keys(log.data).length > 0 && (
-                                  <div>
-                                    <h4 className="font-semibold mb-2">Additional Data</h4>
-                                    <pre className="bg-slate-900 p-3 rounded-lg text-xs overflow-x-auto max-h-48">
-                                      {JSON.stringify(log.data, null, 2)}
-                                    </pre>
-                                  </div>
-                                )}
+                              <div className="flex justify-end">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedLog(null)}
+                                >
+                                  Close Details
+                                </Button>
                               </div>
-
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSelectedLog(null)}
-                              >
-                                Close Details
-                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>

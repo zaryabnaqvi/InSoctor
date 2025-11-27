@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { aiService, AIInsights } from '@/services/ai.service';
 import { toast } from '@/hooks/use-toast';
 import { AIInsightsPanel } from '@/components/alerts/AIInsightsPanel';
+import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 
 interface AlertDetailsDialogProps {
     alert: Alert | null;
@@ -61,6 +62,28 @@ export function AlertDetailsDialog({ alert, open, onOpenChange }: AlertDetailsDi
         }
     };
 
+    const flattenObject = (obj: any, prefix = ''): Record<string, any> => {
+        return Object.keys(obj || {}).reduce((acc: any, k) => {
+            const pre = prefix.length ? prefix + '.' : '';
+            if (typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k])) {
+                Object.assign(acc, flattenObject(obj[k], pre + k));
+            } else {
+                acc[pre + k] = obj[k];
+            }
+            return acc;
+        }, {});
+    };
+
+    // Prepare display data by merging alert fields and rawData
+    const getDisplayData = () => {
+        if (!alert) return {};
+        const { rawData, ...alertProps } = alert;
+        return flattenObject({
+            ...alertProps,
+            ...(rawData || {})
+        });
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -98,7 +121,7 @@ export function AlertDetailsDialog({ alert, open, onOpenChange }: AlertDetailsDi
                             <p className="text-sm font-medium text-muted-foreground">Rule ID</p>
                             <p className="text-sm mt-1">
                                 <code className="bg-secondary px-2 py-1 rounded text-xs">
-                                    {alert.ruleId || 'N/A'}
+                                    {(alert as any).ruleId || 'N/A'}
                                 </code>
                             </p>
                         </div>
@@ -118,6 +141,27 @@ export function AlertDetailsDialog({ alert, open, onOpenChange }: AlertDetailsDi
                     <div>
                         <p className="text-sm font-medium text-muted-foreground mb-2">Description</p>
                         <p className="text-sm bg-secondary/50 p-3 rounded-md">{alert.description}</p>
+                    </div>
+
+                    {/* Parsed Fields Table */}
+                    <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+                        <div className="px-4 py-3 border-b bg-muted/40">
+                            <h4 className="font-semibold text-sm">Event Fields</h4>
+                        </div>
+                        <div className="max-h-[400px] overflow-y-auto">
+                            <Table>
+                                <TableBody>
+                                    {Object.entries(getDisplayData()).map(([key, value]) => (
+                                        <TableRow key={key} className="hover:bg-muted/50">
+                                            <TableCell className="font-medium text-xs w-1/3 text-muted-foreground py-2">{key}</TableCell>
+                                            <TableCell className="font-mono text-xs break-all py-2 text-foreground">
+                                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </div>
 
                     {/* AI Insights Button */}
