@@ -17,6 +17,8 @@ import fimRoutes from './routes/fim.routes';
 import aiRoutes from './routes/ai.routes';
 import vulnerabilityRoutes from './routes/vulnerability.routes';
 import chatRoutes from './routes/chat.routes';
+import reportRoutes from './routes/report.routes';
+import database from './config/database';
 
 const app: Application = express();
 
@@ -73,6 +75,7 @@ app.use('/api/fim', fimRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/vulnerabilities', vulnerabilityRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/reports', reportRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -100,22 +103,33 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // Start server
 const PORT = config.port;
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     logger.info(`🚀 INSOCtor Backend API running on port ${PORT}`);
     logger.info(`📊 Environment: ${config.nodeEnv}`);
     logger.info(`🔗 Frontend URL: ${config.frontendUrl}`);
     logger.info(`🛡️  Wazuh: ${config.wazuh.url}`);
     logger.info(`📋 IRIS: ${config.iris.url}`);
+
+    // Initialize MongoDB connection
+    try {
+        await database.connect();
+        logger.info(`💾 MongoDB: ${config.mongodb.uri}`);
+    } catch (error: any) {
+        logger.error('Failed to connect to MongoDB:', error.message);
+        logger.warn('Report features will not be available until database is connected');
+    }
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
     logger.info('SIGTERM signal received: closing HTTP server');
+    await database.disconnect();
     process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
     logger.info('SIGINT signal received: closing HTTP server');
+    await database.disconnect();
     process.exit(0);
 });
 

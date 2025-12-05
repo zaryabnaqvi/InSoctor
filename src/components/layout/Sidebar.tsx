@@ -93,7 +93,7 @@ const menuItems: MenuItem[] = [
   {
     icon: BarChart3,
     label: 'Reporting',
-    path: '/reporting'
+    path: '/reports'
   },
   {
     icon: Globe,

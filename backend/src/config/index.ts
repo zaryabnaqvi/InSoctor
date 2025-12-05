@@ -19,6 +19,10 @@ interface Config {
     iris: ServiceConfig;
     shuffle: ServiceConfig;
     misp: ServiceConfig;
+    mongodb: {
+        uri: string;
+        dbName: string;
+    };
     polling: {
         alertInterval: number;
         logBatchSize: number;
@@ -78,6 +82,11 @@ export const config: Config = {
         url: getEnvVar('MISP_API_URL'),
         apiKey: getEnvVar('MISP_API_KEY'),
         verifySSL: getBooleanEnv('MISP_VERIFY_SSL', false),
+    },
+
+    mongodb: {
+        uri: getEnvVar('MONGODB_URI', 'mongodb://localhost:27017'),
+        dbName: getEnvVar('MONGODB_DB_NAME', 'insoctor'),
     },
 
     polling: {

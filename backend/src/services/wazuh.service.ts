@@ -6,10 +6,12 @@ import { WazuhAlert, Alert, WazuhLog, WazuhRule, AlertFilters, LogFilters } from
 
 export class WazuhService {
     private client: AxiosInstance;
+    private indexerClient: AxiosInstance | null = null;
     private token: string | null = null;
     private tokenExpiry: number = 0;
 
     constructor() {
+        // Wazuh Manager API client (for agents, rules, etc.)
         this.client = axios.create({
             baseURL: config.wazuh.url,
             httpsAgent: new https.Agent({
@@ -19,6 +21,31 @@ export class WazuhService {
                 'Content-Type': 'application/json',
             },
         });
+
+        // Wazuh Indexer client (for alerts - OpenSearch/Elasticsearch)
+        const indexerUrl = process.env.WAZUH_INDEXER_URL;
+        const indexerUser = process.env.WAZUH_INDEXER_USER;
+        const indexerPassword = process.env.WAZUH_INDEXER_PASSWORD;
+        const indexerVerifySSL = process.env.WAZUH_INDEXER_VERIFY_SSL !== 'false';
+
+        if (indexerUrl && indexerUser && indexerPassword) {
+            this.indexerClient = axios.create({
+                baseURL: indexerUrl,
+                httpsAgent: new https.Agent({
+                    rejectUnauthorized: indexerVerifySSL,
+                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                auth: {
+                    username: indexerUser,
+                    password: indexerPassword,
+                },
+            });
+            logger.info('Wazuh Indexer client initialized', { url: indexerUrl });
+        } else {
+            logger.warn('Wazuh Indexer not configured - alerts will use Manager API fallback');
+        }
     }
 
     /**
@@ -111,11 +138,132 @@ export class WazuhService {
     }
 
     /**
-     * Get alerts from Wazuh
+     * Convert Indexer hit to WazuhAlert format
+     */
+    private convertIndexerHit(hit: any): WazuhAlert {
+        const source = hit._source;
+        return {
+            id: hit._id,
+            timestamp: source.timestamp || source['@timestamp'],
+            rule: {
+                id: source.rule?.id || 'unknown',
+                level: source.rule?.level || 0,
+                description: source.rule?.description || source.rule?.name || 'No description',
+                groups: source.rule?.groups || [],
+                mitre: source.rule?.mitre || {},
+            },
+            agent: {
+                id: source.agent?.id || '000',
+                name: source.agent?.name || source.manager?.name || 'Unknown',
+                ip: source.agent?.ip || '',
+            },
+            full_log: source.full_log || source.data?.title || JSON.stringify(source.data || {}),
+            decoder: source.decoder || {},
+            data: source.data || {},
+        };
+    }
+
+    /**
+     * Get alerts from Wazuh Indexer (OpenSearch) or fallback to Manager API
      */
     async getAlerts(filters: AlertFilters = {}): Promise<Alert[]> {
+        // Try Wazuh Indexer first (preferred for alerts)
+        if (this.indexerClient) {
+            try {
+                return await this.getAlertsFromIndexer(filters);
+            } catch (error: any) {
+                logger.warn('Indexer query failed, trying Manager API', { error: error.message });
+            }
+        }
+
+        // Fallback to Manager API
+        return await this.getAlertsFromManager(filters);
+    }
+
+    /**
+     * Get alerts from Wazuh Indexer (OpenSearch)
+     */
+    private async getAlertsFromIndexer(filters: AlertFilters = {}): Promise<Alert[]> {
         try {
-            logger.debug('Fetching alerts from Wazuh', { filters });
+            logger.debug('Fetching alerts from Wazuh Indexer', { filters });
+
+            const limit = filters.limit || 10000;
+            const now = new Date();
+            const startDate = filters.startDate || new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+            const endDate = filters.endDate || now.toISOString();
+
+            // Build OpenSearch query
+            const mustClauses: any[] = [
+                {
+                    range: {
+                        timestamp: {
+                            gte: startDate,
+                            lte: endDate,
+                        },
+                    },
+                },
+            ];
+
+            // Add severity filter
+            if (filters.severity && filters.severity.length > 0) {
+                const levelRanges: any[] = [];
+                filters.severity.forEach(s => {
+                    switch (s) {
+                        case 'critical': levelRanges.push({ range: { 'rule.level': { gte: 12 } } }); break;
+                        case 'high': levelRanges.push({ range: { 'rule.level': { gte: 7, lt: 12 } } }); break;
+                        case 'medium': levelRanges.push({ range: { 'rule.level': { gte: 4, lt: 7 } } }); break;
+                        case 'low': levelRanges.push({ range: { 'rule.level': { gte: 2, lt: 4 } } }); break;
+                        case 'info': levelRanges.push({ range: { 'rule.level': { lt: 2 } } }); break;
+                    }
+                });
+                if (levelRanges.length > 0) {
+                    mustClauses.push({ bool: { should: levelRanges, minimum_should_match: 1 } });
+                }
+            }
+
+            // Add agent filter
+            if (filters.agentId) {
+                mustClauses.push({ match: { 'agent.id': filters.agentId } });
+            }
+
+            // Add rule filter
+            if (filters.ruleId) {
+                mustClauses.push({ match: { 'rule.id': filters.ruleId } });
+            }
+
+            const query = {
+                size: limit,
+                sort: [{ timestamp: { order: 'desc' } }],
+                query: {
+                    bool: {
+                        must: mustClauses,
+                    },
+                },
+            };
+
+            // Query wazuh-alerts-* index
+            const response = await this.indexerClient!.post('/wazuh-alerts-*/_search', query);
+            const hits = response.data.hits?.hits || [];
+
+            const alerts = hits.map((hit: any) => {
+                const wazuhAlert = this.convertIndexerHit(hit);
+                return this.convertAlert(wazuhAlert);
+            });
+
+            logger.info(`Fetched ${alerts.length} alerts from Wazuh Indexer`);
+            return alerts;
+        } catch (error: any) {
+            logger.error('Failed to fetch alerts from Wazuh Indexer', { error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Get alerts from Wazuh Manager API (fallback)
+     */
+    private async getAlertsFromManager(filters: AlertFilters = {}): Promise<Alert[]> {
+        try {
+            logger.debug('Fetching alerts from Wazuh Manager API', { filters });
 
             const params: any = {
                 limit: filters.limit || 500,
@@ -157,18 +305,26 @@ export class WazuhService {
                 params.q = params.q ? `${params.q};rule.id=${filters.ruleId}` : `rule.id=${filters.ruleId}`;
             }
 
-            const data = await this.request<{ affected_items: WazuhAlert[] }>(
-                'GET',
-                '/alerts',
-                params
-            );
+            // Try /manager/status first to check if API is accessible
+            // Then try various alert endpoints
+            const endpoints = ['/security/events', '/mitre', '/syscheck'];
+            let data: any = { affected_items: [] };
 
-            const alerts = data.affected_items.map(alert => this.convertAlert(alert));
+            for (const endpoint of endpoints) {
+                try {
+                    data = await this.request<{ affected_items: WazuhAlert[] }>('GET', endpoint, params);
+                    if (data.affected_items?.length > 0) break;
+                } catch (e) {
+                    logger.debug(`Endpoint ${endpoint} not available`);
+                }
+            }
 
-            logger.info(`Fetched ${alerts.length} alerts from Wazuh`);
+            const alerts = data.affected_items.map((alert: WazuhAlert) => this.convertAlert(alert));
+
+            logger.info(`Fetched ${alerts.length} alerts from Wazuh Manager`);
             return alerts;
         } catch (error: any) {
-            logger.error('Failed to fetch alerts from Wazuh', { error: error.message });
+            logger.error('Failed to fetch alerts from Wazuh Manager', { error: error.message });
             throw error;
         }
     }
@@ -332,7 +488,7 @@ export class WazuhService {
             // Wazuh API returns list even for single ID
             const data = await this.request<{ affected_items: any[] }>(
                 'GET',
-                `/agents?agent_list=${agentId}`
+                `/agents?agents_list=${agentId}`
             );
 
             if (!data.affected_items || data.affected_items.length === 0) {
@@ -445,14 +601,66 @@ export class WazuhService {
      */
     async blockIp(agentId: string, ip: string): Promise<any> {
         try {
-            logger.info(`Blocking IP ${ip} on agent ${agentId}`);
-            return await this.request('PUT', '/active-response', {
-                command: 'firewall-drop',
-                arguments: [ip],
-                agents_list: [agentId]
-            });
+            // 0. Resolve agent name to ID if necessary (API requires numeric IDs)
+            let resolvedAgentId = agentId;
+
+            // Check if agentId is not numeric (i.e., it's a name like "insoctor-linux")
+            if (!/^\d+$/.test(agentId)) {
+                logger.info(`Resolving agent name '${agentId}' to ID...`);
+
+                // Fetch all agents and find by name (case-insensitive)
+                const agents = await this.getAgents();
+                const agent = agents.find(a =>
+                    a.name.toLowerCase() === agentId.toLowerCase()
+                );
+
+                if (!agent) {
+                    throw new Error(`Agent with name '${agentId}' not found`);
+                }
+
+                resolvedAgentId = agent.id;
+                logger.info(`Resolved agent '${agentId}' to ID '${resolvedAgentId}'`);
+            }
+
+            // 1. Get agent details to determine OS
+            const agent = await this.getAgent(resolvedAgentId);
+            const osPlatform = (agent.os?.platform || '').toLowerCase();
+            const osName = (agent.os?.name || '').toLowerCase();
+
+            logger.info(`Detected agent ${resolvedAgentId} OS: ${osPlatform} ${osName}`);
+
+            let command = 'firewall-drop'; // Default for Linux/Unix
+
+            if (osPlatform.includes('windows') || osName.includes('windows')) {
+                // Windows: Use 'netsh' (Windows Firewall) or 'route-null'
+                command = 'netsh';
+            } else if (osPlatform.includes('darwin') || osName.includes('macos')) {
+                // macOS: often uses pf or firewall-drop (if configured)
+                command = 'firewall-drop';
+            }
+
+            logger.info(`Blocking IP ${ip} on agent ${resolvedAgentId} using command '${command}'`);
+
+            const requestUrl = `/active-response?agents_list=${resolvedAgentId}`;
+            const requestBody = {
+                command: command,
+                arguments: [ip]
+            };
+
+            logger.debug(`AR Request: PUT ${requestUrl}`, { body: requestBody });
+
+            // Send active response request
+            const response = await this.request('PUT', requestUrl, requestBody);
+
+            logger.info(`AR Success: Blocked IP ${ip} on agent ${resolvedAgentId}`, { response });
+            return response;
+
         } catch (error: any) {
-            logger.error(`Failed to block IP ${ip} on agent ${agentId}`, error);
+            logger.error(`AR Failed: Could not block IP ${ip} on agent ${agentId}`, {
+                error: error.message,
+                details: error.response?.data,
+                status: error.response?.status
+            });
             throw error;
         }
     }

@@ -373,7 +373,7 @@ Format responses professionally with bullet points, tables, or summaries as appr
 
                     // Build filter object
                     const alertFilters: any = {
-                        limit: args.limit || 100,
+                        limit: args.limit || 10000,
                         startDate,
                         endDate
                     };
@@ -411,7 +411,7 @@ Format responses professionally with bullet points, tables, or summaries as appr
                     };
 
                 case 'get_top_endpoints_by_alerts':
-                    const allAlerts = await wazuhIndexerService.getAlerts({ limit: 1000 });
+                    const allAlerts = await wazuhIndexerService.getAlerts({ limit: 10000 });
 
                     // Count alerts by agent
                     const agentCounts: Record<string, number> = {};
@@ -446,7 +446,7 @@ Format responses professionally with bullet points, tables, or summaries as appr
 
                 case 'search_security_events':
                     // Simple search across alerts
-                    const searchResults = await wazuhIndexerService.getAlerts({ limit: 500 });
+                    const searchResults = await wazuhIndexerService.getAlerts({ limit: 10000 });
 
                     const query = args.query.toLowerCase();
                     const matches = searchResults.filter((alert: any) => {
@@ -509,7 +509,7 @@ Format responses professionally with bullet points, tables, or summaries as appr
                     const reportAlerts = await wazuhIndexerService.getAlerts({
                         startDate: reportStartDate,
                         endDate: reportEndDate,
-                        limit: 1000 // Limit for analysis
+                        limit: 10000 // Limit for analysis
                     });
 
                     // 3. Calculate Statistics
