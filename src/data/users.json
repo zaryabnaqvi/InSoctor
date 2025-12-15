@@ -1,0 +1,11 @@
+[
+  {
+    "id": "1",
+    "name": "Security Admin",
+    "email": "admin@sentinel-security.com",
+    "password": "$2b$10$fAw7ZZrPkVeutd7/5N/lfu326oW4nBtSt0eI0r5yhtgkSnICASfYi",
+    "role": "admin",
+    "avatar": "https://ui-avatars.com/api/?name=Security+Admin&background=0D8ABC&color=fff",
+    "createdAt": "2025-11-21T19:23:37.389Z"
+  }
+]

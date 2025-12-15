@@ -1,0 +1,29 @@
+[
+  {
+    "id": "1",
+    "name": "Security Admin",
+    "email": "admin@sentinel-security.com",
+    "password": "$2b$10$fAw7ZZrPkVeutd7/5N/lfu326oW4nBtSt0eI0r5yhtgkSnICASfYi",
+    "role": "admin",
+    "avatar": "https://ui-avatars.com/api/?name=Security+Admin&background=0D8ABC&color=fff",
+    "createdAt": "2025-11-21T19:23:37.389Z"
+  },
+  {
+    "name": "Syed rawish",
+    "email": "rawishrizv@gmail.com",
+    "password": "$2b$10$mk/Zs9cYiUiN4mSUYnCBwebh3QJ.cp.7VuIj9kpESeNIh7VYT1qXS",
+    "role": "viewer",
+    "id": "ec397148-b409-42f0-8d34-9064d2106f5c",
+    "createdAt": "2025-11-21T19:29:48.500Z",
+    "avatar": "https://ui-avatars.com/api/?name=Syed%20rawish&background=random"
+  },
+  {
+    "name": "farkhund",
+    "email": "farkhundabbas@gmail.com",
+    "password": "$2b$10$bWVYA0TeZfx30FPMgN9R6eePIWkRk/bvZrsekbilB7OA1yV5bHlJu",
+    "role": "viewer",
+    "id": "db390dde-c62d-4ea5-adba-465c37f3c99e",
+    "createdAt": "2025-11-24T13:17:15.538Z",
+    "avatar": "https://ui-avatars.com/api/?name=farkhund&background=random"
+  }
+]

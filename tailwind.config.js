@@ -55,6 +55,25 @@ export default {
           4: 'hsl(var(--chart-4))',
           5: 'hsl(var(--chart-5))',
         },
+        // Custom brand colors matching InSOCtor logo
+        brand: {
+          cyan: '#00d4ff',
+          'cyan-light': '#33ddff',
+          'cyan-dark': '#00a8cc',
+        },
+        cyan: {
+          50: '#ecfeff',
+          100: '#cffafe',
+          200: '#a5f3fc',
+          300: '#67e8f9',
+          400: '#22d3ee',
+          500: '#00d4ff',
+          600: '#00a8cc',
+          700: '#0e7490',
+          800: '#155e75',
+          900: '#164e63',
+          950: '#083344',
+        },
       },
       keyframes: {
         'accordion-down': {

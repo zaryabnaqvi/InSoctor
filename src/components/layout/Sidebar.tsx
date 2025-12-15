@@ -1,36 +1,35 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  LayoutDashboard, 
-  Shield, 
-  Server, 
-  AlertCircle, 
-  UserCheck, 
-  Terminal, 
-  BarChart3, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  LayoutDashboard,
+  AlertCircle,
+  Terminal,
+  BarChart3,
   Settings,
-  Network,
   Share2,
   ChevronDown,
   ChevronUp,
   HardDrive,
-  List,
-  Search,
-  Zap,
-  FileText,
   Globe,
-  Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAlerts } from '@/contexts/AlertContext';
+import { useUser } from '@/contexts/UserContext';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
+import logoIcon from '@/assets/logo-icon.jpg';
+import logoFull from '@/assets/logo-full.jpg';
 
 interface SidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
+}
+
+interface SubMenuItem {
+  label: string;
+  path: string;
 }
 
 interface MenuItem {
@@ -39,22 +38,18 @@ interface MenuItem {
   path: string;
   subItems?: SubMenuItem[];
   alertCount?: number;
-}
-
-interface SubMenuItem {
-  label: string;
-  path: string;
+  roles?: string[];
 }
 
 const menuItems: MenuItem[] = [
-  { 
-    icon: LayoutDashboard, 
-    label: 'Dashboard', 
-    path: '/' 
+  {
+    icon: LayoutDashboard,
+    label: 'Dashboard',
+    path: '/'
   },
-  { 
-    icon: AlertCircle, 
-    label: 'SIEM', 
+  {
+    icon: AlertCircle,
+    label: 'SIEM',
     path: '/siem',
     subItems: [
       { label: 'Offense', path: '/alerts' },
@@ -62,9 +57,9 @@ const menuItems: MenuItem[] = [
       { label: 'Use Case', path: '/siem/rules' }
     ]
   },
-  { 
-    icon: HardDrive, 
-    label: 'EDR', 
+  {
+    icon: HardDrive,
+    label: 'EDR',
     path: '/edr',
     subItems: [
       { label: 'Endpoint Inventory', path: '/endpoints' },
@@ -73,10 +68,11 @@ const menuItems: MenuItem[] = [
       { label: 'Malware Scan', path: '/edr/malware-scan' }
     ]
   },
-  { 
-    icon: Terminal, 
-    label: 'SOAR', 
+  {
+    icon: Terminal,
+    label: 'SOAR',
     path: '/soar',
+    roles: ['admin', 'analyst'],
     subItems: [
       { label: 'Case Management', path: '/soar/cases' },
       { label: 'Automation', path: '/soar/automation' },
@@ -85,42 +81,44 @@ const menuItems: MenuItem[] = [
     ]
   },
   {
-    icon: Share2, 
+    icon: Share2,
     label: 'FIM',
-    path: '/fim'
+    path: '/siem/fim'
   },
   {
-    icon: MagnifyingGlassIcon, 
+    icon: MagnifyingGlassIcon,
     label: 'Vulnerability Management',
     path: '/vulnerability-management'
   },
-  { 
-    icon: BarChart3, 
-    label: 'Reporting', 
-    path: '/reporting' 
+  {
+    icon: BarChart3,
+    label: 'Reporting',
+    path: '/reports'
   },
-  { 
-    icon: Globe, 
-    label: 'Threat Intelligence', 
-    path: '/threat-intelligence' 
+  {
+    icon: Globe,
+    label: 'Threat Intelligence',
+    path: '/threat-intelligence'
   },
-  { 
-    icon: Settings, 
-    label: 'Administration', 
-    path: '/users' 
+  {
+    icon: Settings,
+    label: 'Administration',
+    path: '/users',
+    roles: ['admin']
   }
 ];
 
 export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const { alerts } = useAlerts();
+  const { user } = useUser();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
-  
-  const criticalAlerts = alerts.filter(alert => 
+
+  const criticalAlerts = alerts.filter(alert =>
     alert.status === 'open' && alert.severity === 'critical'
   ).length;
-  
-  const highAlerts = alerts.filter(alert => 
+
+  const highAlerts = alerts.filter(alert =>
     alert.status === 'open' && alert.severity === 'high'
   ).length;
 
@@ -130,6 +128,10 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
       [path]: !prev[path]
     }));
   };
+
+  const filteredItems = menuItems.filter(item =>
+    !item.roles || (user && item.roles.includes(user.role))
+  );
 
   return (
     <div
@@ -143,19 +145,17 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           "flex items-center transition-all overflow-hidden",
           collapsed ? "justify-center w-full" : ""
         )}>
-          <div className="flex shrink-0 items-center justify-center h-9 w-9 rounded-lg bg-primary mr-2">
-            <Shield className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span 
-            className={cn(
-              "font-semibold text-lg transition-opacity",
-              collapsed ? "opacity-0 w-0" : "opacity-100"
-            )}
-          >
-            InSOCtor
-          </span>
+          {collapsed ? (
+            <div className="flex shrink-0 items-center justify-center h-12 w-12">
+              <img src={logoIcon} alt="InSOCtor" className="h-full w-full object-contain" />
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <img src={logoFull} alt="InSOCtor" className="h-12 w-auto object-contain" />
+            </div>
+          )}
         </div>
-        <button 
+        <button
           onClick={onToggleCollapse}
           className={cn(
             "h-6 w-6 rounded hover:bg-secondary flex items-center justify-center",
@@ -169,17 +169,17 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
       <nav className="flex-1 pt-4 pb-4 overflow-y-auto">
         <TooltipProvider>
           <ul className="space-y-1 px-2">
-            {menuItems.map((item, index) => {
+            {filteredItems.map((item, index) => {
               const Icon = item.icon;
               const hasSubItems = item.subItems && item.subItems.length > 0;
               const isExpanded = expandedItems[item.path];
-              const alertCount = item.label === 'Alerts' 
+              const alertCount = item.label === 'Alerts'
                 ? criticalAlerts + highAlerts
                 : 0;
-                
+
               return (
                 <li key={item.path}>
-                  <div 
+                  <div
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
                     className="space-y-1"
@@ -204,12 +204,12 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                           >
                             <div className="flex items-center">
                               <span className="relative flex">
-                                <Icon 
+                                <Icon
                                   className={cn(
                                     "h-5 w-5 transition-transform",
                                     hoveredIndex === index ? "scale-110" : "",
                                     collapsed ? "mx-auto" : "mr-3"
-                                  )} 
+                                  )}
                                 />
                                 {alertCount > 0 && (
                                   <span className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center">
@@ -231,7 +231,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                               </span>
                             )}
                           </NavLink>
-                          
+
                           {!collapsed && hasSubItems && isExpanded && (
                             <div className="ml-6 space-y-1 mt-1">
                               {item.subItems?.map((subItem) => (
@@ -274,7 +274,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           </ul>
         </TooltipProvider>
       </nav>
-      
+
       <div className={cn(
         "border-t border-border p-3",
         collapsed ? "text-center" : ""
